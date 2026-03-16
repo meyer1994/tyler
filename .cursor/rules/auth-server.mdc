@@ -1,0 +1,207 @@
+---
+alwaysApply: false
+globs: server/**/*.ts
+---
+
+From the user input, and using the guide below, you will implement server-side
+authentication features using Better Auth.
+
+# Hands on guide
+
+This project uses [Better Auth](https://www.better-auth.com/) for
+authentication. For client-side patterns, see [Auth
+Client](mdc:.cursor/rules/auth-client.mdc).
+
+## Architecture Overview
+
+```
+server/
+├── lib/auth.ts           → Better Auth server config
+├── api/auth/[...all].ts  → Auth API catch-all handler
+├── lib/trpc.ts           → protectedProcedure middleware
+└── db/auth.ts            → Auth-related DB schema
+```
+
+## Protecting tRPC Procedures
+
+Use `protectedProcedure` instead of `baseProcedure` for routes that require
+authentication. The `ctx.session` is guaranteed to be non-null in protected
+procedures.
+
+```ts
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  baseProcedure,
+} from "../lib/trpc";
+import * as z from "zod";
+
+export const itemsRouter = createTRPCRouter({
+  // Public route - anyone can access
+  public: baseProcedure.query(({ ctx }) => {
+    // ctx.session might be null
+    return { message: "Hello, world!" };
+  }),
+
+  // Protected route - requires authentication
+  list: protectedProcedure.query(({ ctx }) => {
+    // ctx.session is guaranteed to exist (TRPCContextProtected)
+    const userId = ctx.session.user.id;
+    return ctx.db.query.items.findMany({
+      where: (items, { eq }) => eq(items.userId, userId),
+    });
+  }),
+
+  // Protected mutation with input validation
+  create: protectedProcedure
+    .input(z.object({ name: z.string().min(1) }))
+    .mutation(({ input, ctx }) => {
+      return ctx.db.insert(items).values({
+        id: crypto.randomUUID(),
+        name: input.name,
+        userId: ctx.session.user.id,
+      });
+    }),
+});
+```
+
+## Server-side Auth Context
+
+In tRPC procedures, auth context is available via `ctx`:
+
+```ts
+protectedProcedure.query(({ ctx }) => {
+  // User info
+  ctx.session.user.id;
+  ctx.session.user.email;
+  ctx.session.user.name;
+
+  // Session info
+  ctx.session.session.id;
+  ctx.session.session.activeOrganizationId;
+
+  // Auth API (for server-side operations)
+  ctx.auth.api.getSession({ headers: ctx.event.headers });
+  ctx.auth.api.verifyApiKey({ body: { key } });
+});
+```
+
+## API Key Authentication (H3 Endpoints)
+
+For external API endpoints (non-tRPC), use API key authentication:
+
+```ts
+// server/api/protected/my-endpoint.ts
+import { serverAuth } from "~~/server/lib/auth";
+
+export default defineEventHandler(async (event) => {
+  const auth = serverAuth(event);
+
+  // Get API key from header
+  const apiKey = getHeader(event, "x-api-key");
+
+  if (!apiKey) {
+    throw createError({
+      status: 401,
+      message: "Missing API key. Provide x-api-key header.",
+    });
+  }
+
+  // Verify the API key
+  const result = await auth.api.verifyApiKey({ body: { key: apiKey } });
+
+  if (!result.valid) {
+    throw createError({ status: 401, message: "Unauthorized" });
+  }
+
+  // Proceed with authenticated logic
+  return { message: "Success!" };
+});
+```
+
+## Session-based Auth in H3 Endpoints
+
+For session-based authentication in non-tRPC endpoints:
+
+```ts
+// server/api/protected/session-endpoint.ts
+import { serverAuth } from "~~/server/lib/auth";
+
+export default defineEventHandler(async (event) => {
+  const auth = serverAuth(event);
+
+  // Get session from cookies/headers
+  const session = await auth.api.getSession({ headers: event.headers });
+
+  if (!session?.user) {
+    throw createError({ status: 401, message: "Unauthorized" });
+  }
+
+  // Proceed with authenticated logic
+  return {
+    message: "Hello!",
+    userId: session.user.id,
+  };
+});
+```
+
+## Database Schema
+
+Auth-related tables are defined in `server/db/auth.ts`:
+
+| Table          | Description                      |
+| -------------- | -------------------------------- |
+| `user`         | User accounts                    |
+| `session`      | Active sessions                  |
+| `account`      | OAuth/credential accounts        |
+| `verification` | Email verification tokens        |
+| `apikey`       | API keys for programmatic access |
+| `organization` | Organizations for multi-tenancy  |
+| `member`       | Organization members             |
+| `invitation`   | Pending organization invitations |
+| `subscription` | Stripe subscriptions             |
+
+## TRPCContext Types
+
+```ts
+// Available in baseProcedure - session may be null
+type TRPCContext = {
+  event: H3Event;
+  db: DrizzleDB;
+  storage: StorageInterface;
+  vector: VectorInterface;
+  queue: QueueInterface;
+  auth: BetterAuth;
+  session: Session | null;
+};
+
+// Available in protectedProcedure - session is guaranteed
+type TRPCContextProtected = TRPCContext & {
+  session: Session; // non-null
+};
+```
+
+## Server Auth Configuration
+
+The auth server is configured in `server/lib/auth.ts` with these plugins:
+
+- **emailAndPassword**: Email/password authentication
+- **magicLink**: Passwordless email authentication
+- **apiKey**: API key generation and verification
+- **organization**: Multi-tenancy with roles and invitations
+- **stripe**: Subscription management
+
+```ts
+// Accessing the auth instance in any H3 handler
+import { serverAuth } from "~~/server/lib/auth";
+
+export default defineEventHandler(async (event) => {
+  const auth = serverAuth(event);
+
+  // Available APIs:
+  // auth.api.getSession({ headers })
+  // auth.api.verifyApiKey({ body: { key } })
+  // auth.api.createApiKey({ body: { userId, name } })
+  // ... and more
+});
+```

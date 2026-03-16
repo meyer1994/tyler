@@ -1,0 +1,205 @@
+---
+globs: server/trpc/**/*.ts
+alwaysApply: false
+---
+
+From the user input, and using the guide below, you will implement a new tRPC
+router.
+
+# Hands on guide
+
+Below is a hands on guide on the patterns used in this project to implement a
+new tRPC router.
+
+## File Structure
+
+```
+server/trpc/
+├── index.ts     # Main app router (merges all other routers)
+└── [route].ts   # Domain-specific routers (e.g., users.ts, files.ts, items.ts)
+```
+
+## Basic Router Template
+
+```typescript
+// server/trpc/items.ts
+import { and, desc, eq } from "drizzle-orm";
+import * as z from "zod";
+// import the table from the schema
+import { TItems } from "~~/server/db/schema";
+// import the router and procedure helpers
+import { createTRPCRouter, protectedProcedure } from "../lib/trpc";
+
+export const itemsRouter = createTRPCRouter({
+  // LIST: get all items for the current user
+  // use protectedProcedure for authenticated routes
+  list: protectedProcedure
+    // no input needed for list, but you can add pagination:
+    // .input(z.object({ limit: z.number().optional().default(10) }))
+    .query(async ({ ctx }) => {
+      return await ctx.db
+        .select()
+        .from(TItems)
+        // always filter by user id for user-scoped data
+        .where(eq(TItems.userId, ctx.session.user.id))
+        .orderBy(desc(TItems.createdAt))
+        // always use .all() for lists - it throws an error if the query fails
+        .all();
+    }),
+
+  // CREATE: insert a new item
+  create: protectedProcedure
+    // always use zod for input validation
+    // always add defaults in the schema if possible
+    .input(z.object({ name: z.string().min(1).max(255) }))
+    .mutation(async ({ input, ctx }) => {
+      return await ctx.db
+        .insert(TItems)
+        // always include userId for user-scoped data
+        .values({ name: input.name, userId: ctx.session.user.id })
+        .returning()
+        // always use .get() for single results - it throws an error if the query
+        // fails
+        .get();
+    }),
+
+  // UPDATE: update an existing item
+  update: protectedProcedure
+    .input(
+      z.object({ id: z.string().uuid(), name: z.string().min(1).max(255) }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      return await ctx.db
+        .update(TItems)
+        .set({ name: input.name })
+        // always check both id AND userId to prevent unauthorized access
+        .where(
+          and(eq(TItems.id, input.id), eq(TItems.userId, ctx.session.user.id)),
+        )
+        .returning()
+        .get();
+    }),
+
+  // DELETE: remove an item
+  delete: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      // delete doesn't need to return anything
+      await ctx.db
+        .delete(TItems)
+        .where(
+          and(eq(TItems.id, input.id), eq(TItems.userId, ctx.session.user.id)),
+        );
+    }),
+});
+```
+
+## Registering a Router
+
+After creating a router, register it in the main app router:
+
+```typescript
+// server/trpc/index.ts
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
+import { itemsRouter } from "~~/server/trpc/items";
+import { baseProcedure, createTRPCRouter } from "../lib/trpc";
+
+export const appRouter = createTRPCRouter({
+  // public health check endpoints
+  ping: baseProcedure.query(() => "pong"),
+  health: baseProcedure.query(() => ({ status: "ok" })),
+
+  // register domain routers
+  items: itemsRouter,
+});
+
+// export type definition of API for client usage
+export type AppRouter = typeof appRouter;
+export type AppRouterInputs = inferRouterInputs<AppRouter>;
+export type AppRouterOutputs = inferRouterOutputs<AppRouter>;
+```
+
+## Using Context Services
+
+The context (`ctx`) provides access to various services. Check
+[`server/lib/trpc.ts`](mdc:server/lib/trpc.ts) for the full context definition.
+
+```typescript
+// ctx.db - Drizzle database instance
+const items = await ctx.db.select().from(TItems).all()
+
+// ctx.storage - Cloudflare R2 file storage
+await ctx.storage.put(key, file)
+await ctx.storage.get(key)
+await ctx.storage.del(key)
+const files = await ctx.storage.list(prefix)
+const url = await ctx.storage.presign(key)
+
+// ctx.vector - Cloudflare Vectorize for embeddings
+await ctx.vector.set(key, vector, metadata)
+await ctx.vector.get(key)
+await ctx.vector.del(key)
+const results = await ctx.vector.search(vector, topK)
+
+// ctx.queue - Cloudflare Queues for background jobs
+await ctx.queue.send({ type: 'process', data: { ... } })
+
+// ctx.session - Better Auth session (available in protectedProcedure)
+ctx.session.user.id
+ctx.session.user.email
+ctx.session.session.id
+
+// ctx.event - H3 event for advanced use cases
+ctx.event.headers
+ctx.event.waitUntil(asyncTask) // for background tasks
+```
+
+## File Upload Handling
+
+For file uploads, use FormData with zod transforms:
+
+```typescript
+import { createTRPCRouter, protectedProcedure } from "../lib/trpc";
+import { onFileUpload } from "../tasks/onFileUpload";
+
+export const filesRouter = createTRPCRouter({
+  create: protectedProcedure
+    .input(
+      z
+        // accept FormData from the client
+        .instanceof(FormData)
+        // transform to object for easier access
+        .transform((fd) => Object.fromEntries(fd.entries()))
+        // then validate the shape
+        .pipe(
+          z.object({
+            file: z
+              .instanceof(File)
+              .refine((f) => f.size > 0, "File is empty")
+              .refine(
+                (f) => f.size <= 10 * 1024 * 1024,
+                "File too large (max 10MB)",
+              )
+              .refine((f) => ["text/plain", "text/markdown"].includes(f.type)),
+          }),
+        ),
+    )
+    .mutation(async ({ input, ctx }) => {
+      // namespace files by user id
+      const key = `${ctx.session.user.id}/${input.file.name}`;
+      await ctx.storage.put(key, input.file);
+
+      // trigger background processing with waitUntil
+      ctx.event.waitUntil(onFileUpload(key, ctx));
+
+      return { key };
+    }),
+});
+```
+
+## Procedure Types
+
+- `baseProcedure`: Public procedure with logging. Use for health checks, public
+  data.
+- `protectedProcedure`: Requires authentication, throws 401 if no session. Use
+  for all user-scoped data.

@@ -1,0 +1,137 @@
+---
+globs: server/db/**/*.ts,server/trpc/**/*.ts
+---
+
+# Drizzle ORM & Database Patterns
+
+Guidelines for database operations, schema design, and Drizzle ORM usage with Cloudflare D1 (SQLite).
+
+## Database Connection
+
+In tRPC procedures, always use the `db` instance from the context:
+
+```typescript
+export const router = createTRPCRouter({
+  list: baseProcedure.query(async ({ ctx }) => {
+    // ctx.db is already initialized in createTRPCContext
+    return await ctx.db.select().from(TUsers)
+  }),
+})
+```
+
+In server middleware or tasks, access it via `event.context.db`:
+
+```typescript
+export default defineEventHandler(async (event) => {
+  const db = event.context.db
+  // ...
+})
+```
+
+## Schema Patterns
+
+### Table Definitions
+
+Follow these patterns from [schema.ts](mdc:server/db/schema.ts). Use `T` prefix for table constants:
+
+```typescript
+import { sql } from 'drizzle-orm'
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+
+export const TTableName = sqliteTable('table_name', {
+  // Primary key with UUID
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+    
+  // Foreign key references
+  userId: text('user_id')
+    .notNull()
+    .references(() => TUsers.id, { onDelete: 'cascade' }),
+    
+  // Timestamps (stored as text/ISO string in SQLite)
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => sql`CURRENT_TIMESTAMP`),
+})
+```
+
+### Relations
+
+Define relations for type-safe joins using the `R` prefix:
+
+```typescript
+import { relations } from 'drizzle-orm'
+
+export const RTableName = relations(TTableName, ({ one, many }) => ({
+  user: one(TUsers, {
+    fields: [TTableName.userId],
+    references: [TUsers.id],
+  }),
+  children: many(TChildTable),
+}))
+```
+
+## Query Patterns
+
+### Basic CRUD Operations
+
+```typescript
+import { eq, desc, sql } from 'drizzle-orm'
+
+// SELECT
+const users = await ctx.db
+  .select()
+  .from(TUsers)
+  .orderBy(desc(TUsers.createdAt))
+  .all()
+
+// SELECT ONE
+const user = await ctx.db
+  .select()
+  .from(TUsers)
+  .where(eq(TUsers.id, userId))
+  .get()
+
+// INSERT
+const newUser = await ctx.db
+  .insert(TUsers)
+  .values({
+    name: 'John Doe',
+  })
+  .returning()
+  .get()
+
+// UPDATE
+const updatedUser = await ctx.db
+  .update(TUsers)
+  .set({ 
+    name: 'Jane Doe',
+    updatedAt: sql`CURRENT_TIMESTAMP`,
+  })
+  .where(eq(TUsers.id, userId))
+  .returning()
+  .get()
+
+// DELETE
+await ctx.db
+  .delete(TUsers)
+  .where(eq(TUsers.id, userId))
+  .run()
+```
+
+### Relations Queries
+
+Find many with relations:
+
+```ts
+const usersWithProfile = await ctx.db.query.TUsers.findMany({
+  with: { profile: true },
+  where: eq(TUsers.id, userId),
+  orderBy: desc(TUsers.createdAt),
+})
+```

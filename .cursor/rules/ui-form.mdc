@@ -1,0 +1,98 @@
+---
+globs: app/pages/**/*.vue,app/app.vue
+alwaysApply: false
+---
+
+# Sample Form\* component with best practices
+
+Follow this example when creating a new form component.
+
+```vue
+<script setup lang="ts">
+import * as z from "zod";
+
+// ALWAYS define a zod schema for the form
+// ALWAYS place it at the top of the file
+const schema = z.object({
+  name: z.string().min(1),
+  email: z.string().email("Invalid email"),
+});
+
+type Schema = z.output<typeof schema>;
+// ALWAYS export the schema type
+export type FormUserData = Schema;
+
+// ALWAYS include the following props in the component:
+type Props = {
+  defaultValue?: Partial<Schema>;
+  loading?: boolean;
+};
+
+// Use withDefaults when it makes sense to do so
+const props = withDefaults(defineProps<Props>(), {
+  defaultValue: () => ({}),
+  loading: () => false,
+});
+
+// Initialize the state with the defaultValue props
+const state = reactive<Partial<Schema>>(props.defaultValue);
+// ALWAYS watch for changes in the defaultValue props
+watch(
+  () => props.defaultValue,
+  (v) => v && Object.assign(state, v),
+);
+
+// ALWAYS deinfe a 'submit' event of the type Schema
+const emits = defineEmits<{ submit: [e: Schema] }>();
+</script>
+
+<template>
+  <!-- ALWAYS set the .prevent modifier to the submit event -->
+  <UForm
+    :schema="schema"
+    :state="state"
+    class="flex flex-col gap-4"
+    @submit.prevent="(e) => emits('submit', e.data)"
+    #default="{ loading, errors }"
+  >
+    <UFormField name="name" label="Name" description="Enter your name">
+      <UInput
+        v-model="state.name"
+        placeholder="Ex: John Doe"
+        class="w-full"
+      />
+    </UFormField>
+
+    <UFormField name="email" label="Email" description="Enter your email">
+      <UInput
+        v-model="state.email"
+        type="email"
+        placeholder="Ex: john.doe@example.com"
+        class="w-full"
+      />
+    </UFormField>
+
+    <div class="flex gap-2 justify-between items-center mt-4">
+      <UButton type="submit" label="Submit">
+    </div>
+  </UForm>
+</template>
+```
+
+## Usage
+
+```vue
+<script setup lang="ts">
+import type { FormUserData } from "~~/components/FormUser.vue";
+
+const { $trpc } = useNuxtApp();
+
+async function onSubmit(data: FormUserData) {
+  await $trpc.user.create.mutate(data);
+}
+</script>
+
+<template>
+  <FormUser @submit="onSubmit" />
+</template>
+```

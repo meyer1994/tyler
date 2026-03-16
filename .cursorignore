@@ -1,0 +1,5 @@
+.data
+cdk.out
+.nuxt
+.output
+node_modules

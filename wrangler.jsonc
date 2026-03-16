@@ -1,0 +1,95 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "flower",
+	"main": "./.output/server/index.mjs",
+	"compatibility_date": "2026-01-09",
+	"observability": {
+		"enabled": true
+	},
+	"compatibility_flags": [
+		"global_fetch_strictly_public"
+	],
+	/**
+	 * Smart Placement
+	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+	 */
+	// "placement": { "mode": "smart" }
+	/**
+	 * Bindings
+	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+	 * databases, object storage, AI inference, real-time communication and more.
+	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+	 */
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "flower",
+			"database_id": "ced49fa0-2b3e-406b-95a0-56666f8c918e",
+			"migrations_dir": "./server/db/migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "flower"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "a93e975a94f9452494767c8244563579"
+		}
+	],
+	/**
+	 * Environment Variables
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+	 */
+	// "vars": { "MY_VARIABLE": "production_value" }
+	/**
+	 * Note: Use secrets to store sensitive data.
+	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 */
+	/**
+	 * Static Assets
+	 * https://developers.cloudflare.com/workers/static-assets/binding/
+	 */
+	"assets": {
+		"directory": "./.output/public/",
+		"binding": "ASSETS"
+	},
+	"vectorize": [
+		{
+			"binding": "VECTORIZE",
+			"index_name": "flower",
+			"remote": true
+		}
+	],
+	"ai": {
+		"binding": "AI",
+		"remote": true
+	},
+	"queues": {
+		"producers": [
+			{
+				"binding": "QUEUE",
+				"queue": "flower"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "flower",
+				"max_batch_size": 10,
+				"max_retries": 0,
+			}
+		]
+	}
+	/**
+	 * Service Bindings (communicate between multiple Workers)
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
+	 */
+	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
+}

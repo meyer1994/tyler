@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "nuxt": {
+      "type": "http",
+      "url": "https://nuxt.com/mcp"
+    },
+    "nuxt-ui": {
+      "type": "http",
+      "url": "https://ui.nuxt.com/mcp"
+    },
+    "trpc-nuxt": {
+      "type": "http",
+      "url": "https://gitmcp.io/wobsoriano/trpc-nuxt"
+    },
+    "better-auth": {
+      "type": "http",
+      "url": "https://gitmcp.io/better-auth/better-auth"
+    }
+  }
+}

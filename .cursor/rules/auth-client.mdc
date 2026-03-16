@@ -1,0 +1,313 @@
+---
+alwaysApply: false
+globs: app/**/*.vue, app/**/*.ts
+---
+
+From the user input, and using the guide below, you will implement client-side
+authentication features using Better Auth.
+
+# Hands on guide
+
+This project uses [Better Auth](https://www.better-auth.com/) for
+authentication. For server-side patterns, see [Auth
+Server](mdc:.cursor/rules/auth-server.mdc).
+
+## The `useAuth()` Composable
+
+The `useAuth()` composable provides all auth functionality on the client:
+
+```ts
+const {
+  user, // Computed<User | null> - current user
+  session, // Computed<Session | null> - current session
+  loggedIn, // Computed<boolean> - is user logged in
+  client, // Better Auth client - for advanced operations
+  signIn, // Sign in methods
+  signUp, // Sign up methods
+  signOut, // Sign out function
+  fetchSession, // Refresh session data
+  apiKey, // API key management
+} = useAuth();
+```
+
+## Sign In with Email/Password
+
+```vue
+<script setup lang="ts">
+const { client: auth } = useAuth();
+
+async function handleSignIn(email: string, password: string) {
+  const { data, error } = await auth.signIn.email({
+    email,
+    password,
+    callbackURL: "/dash", // redirect after sign in
+  });
+  if (error) throw createError(error);
+  // do something, usually a reload
+  // example: await reloadNuxtApp({ path: '/dash' })
+}
+</script>
+```
+
+## Sign Up
+
+```vue
+<script setup lang="ts">
+const { client: auth } = useAuth();
+
+async function handleSignUp(email: string, password: string) {
+  const { error } = await auth.signUp.email({
+    name: email,
+    email,
+    password,
+    callbackURL: "/dash",
+  });
+  if (error) throw createError(error);
+  await reloadNuxtApp({ path: "/dash" });
+}
+</script>
+```
+
+## Sign In with Magic Link
+
+```vue
+<script setup lang="ts">
+const { client: auth } = useAuth();
+const toast = useToast();
+
+async function handleMagicLink(email: string) {
+  const { error } = await auth.signIn.magicLink({
+    email,
+    callbackURL: "/dash",
+  });
+  if (error) throw createError(error);
+  toast.add({
+    title: "Magic Link Sent",
+    description: "Check your email for a magic link",
+  });
+}
+</script>
+```
+
+## Sign Out
+
+```vue
+<script setup lang="ts">
+const { signOut } = useAuth();
+
+async function handleSignOut() {
+  const { error } = await signOut();
+  if (error) throw createError(error);
+  await reloadNuxtApp({ path: "/" });
+}
+</script>
+```
+
+## Protecting Pages
+
+Use `definePageMeta({ auth: true })` to protect pages. The global middleware
+will redirect unauthenticated users to a 404 page.
+
+```vue
+<script setup lang="ts">
+// This page requires authentication
+definePageMeta({ auth: true });
+
+// Now you can safely use auth data
+const { user } = useAuth();
+</script>
+
+<template>
+  <div>
+    <h1>Welcome, {{ user?.name }}</h1>
+  </div>
+</template>
+```
+
+## Accessing User Data in Components
+
+```vue
+<script setup lang="ts">
+const { user, loggedIn } = useAuth();
+</script>
+
+<template>
+  <div>
+    <template v-if="loggedIn">
+      <p>Welcome, {{ user?.name || user?.email }}</p>
+    </template>
+    <template v-else>
+      <NuxtLink to="/signin">Sign In</NuxtLink>
+    </template>
+  </div>
+</template>
+```
+
+## Managing API Keys
+
+```vue
+<script setup lang="ts">
+const { apiKey } = useAuth();
+
+// List user's API keys
+const { data: keys, refresh } = await useAsyncData("keys", async () => {
+  const result = await apiKey.list();
+  return result.data ?? [];
+});
+
+// Create a new API key
+async function createKey(name: string) {
+  const result = await apiKey.create({
+    name,
+    prefix: "myapp_", // optional prefix
+    expiresIn: 30 * 24 * 60 * 60, // 30 days in seconds (optional)
+  });
+  if (result.error) throw result.error;
+  // IMPORTANT: result.data.key is only shown once!
+  console.log("New key:", result.data?.key);
+  await refresh();
+}
+
+// Delete an API key
+async function deleteKey(keyId: string) {
+  await apiKey.delete({ keyId });
+  await refresh();
+}
+</script>
+```
+
+## Organization Management
+
+Better Auth's organization plugin provides multi-tenancy support:
+
+```vue
+<script setup lang="ts">
+const { client } = useAuth();
+
+// List organizations user owns
+const { data: organizations, refresh: refreshOrgs } = await useAsyncData(
+  "organizations",
+  async () => {
+    const result = await client.organization.list();
+    return result.data || [];
+  },
+);
+
+// Get active organization with members and invitations
+const { data: activeOrg, refresh: refreshActive } = await useAsyncData(
+  "active-organization",
+  async () => {
+    const result = await client.organization.getFullOrganization();
+    return result.data;
+  },
+);
+
+// Create organization
+async function createOrg(name: string, slug: string) {
+  await client.organization.create({ name, slug });
+  await refreshOrgs();
+}
+
+// Set active organization
+async function setActive(orgId: string) {
+  await client.organization.setActive({ organizationId: orgId });
+  await refreshActive();
+}
+
+// Invite member to active organization
+async function inviteMember(email: string, role: "member" | "admin") {
+  await client.organization.inviteMember({
+    email,
+    role,
+    resend: true, // resend if already invited
+  });
+}
+
+// Accept invitation (on invitation page)
+async function acceptInvitation(invitationId: string) {
+  const { data, error } = await client.organization.acceptInvitation({
+    invitationId,
+  });
+  if (error) throw error;
+  return data;
+}
+</script>
+```
+
+## Stripe Subscriptions
+
+```vue
+<script setup lang="ts">
+const { client } = useAuth();
+
+// Redirect to Stripe billing portal
+async function openBillingPortal() {
+  const { data, error } = await client.subscription.billingPortal();
+  if (error) throw error;
+  await navigateTo(data.url, { external: true });
+}
+
+// Subscribe to a plan
+async function subscribe(plan: "starter" | "pro") {
+  const { data, error } = await client.subscription.checkout({ plan });
+  if (error) throw error;
+  await navigateTo(data.url, { external: true });
+}
+</script>
+```
+
+## Auth Form with Nuxt UI
+
+Use `UAuthForm` for sign in/up forms:
+
+```vue
+<script setup lang="ts">
+import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
+import * as z from "zod";
+
+const schema = z.object({
+  email: z.email("Invalid email"),
+  password: z.string().min(8, "Must be at least 8 characters"),
+});
+
+type Schema = z.output<typeof schema>;
+
+const { client: auth, loggedIn } = useAuth();
+
+const fields: AuthFormField[] = [
+  {
+    name: "email",
+    label: "Email",
+    type: "email",
+    placeholder: "Enter your email",
+    required: true,
+  },
+  {
+    name: "password",
+    label: "Password",
+    type: "password",
+    placeholder: "Enter your password",
+    required: true,
+  },
+];
+
+async function onSubmit(e: FormSubmitEvent<Schema>) {
+  await auth.signIn.email({
+    email: e.data.email,
+    password: e.data.password,
+    callbackURL: "/dash",
+  });
+}
+</script>
+
+<template>
+  <UAuthForm
+    :schema="schema"
+    title="Sign in"
+    description="Enter your credentials"
+    icon="i-lucide-user"
+    :fields="fields"
+    @submit="onSubmit"
+  />
+</template>
+```

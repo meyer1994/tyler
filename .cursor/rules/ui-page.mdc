@@ -1,0 +1,155 @@
+---
+alwaysApply: false
+---
+
+From the user input, and using the guide below, you will implement a new nuxt
+page.
+
+# Hands on guide
+
+Below is a hands on guide on the patterns used in this project to implement a
+new nuxt page.
+
+```vue
+<script setup lang="ts">
+// use auth meta to protect the page. if the user is not logged in,
+// it will be redirected to the default 404 page
+definePageMeta({ auth: true });
+
+const route = useRoute();
+// use it:
+// route.query.key1
+// route.query.key2
+// ...
+// route.params.key1
+// route.params.key2
+// ...
+
+// trpc client is available in the app via useNuxtApp()
+// check [tRPC Client Guide](mdc:.cursor/rules/trpc-client.mdc) for details if
+// needed
+const { $trpc } = useNuxtApp();
+
+// ALWAYS use useAsyncData to fetch data as it is SSR safe
+const { data, error } = await useAsyncData("items", async () => {
+  return await $trpc.items.list.query();
+});
+
+// you can use dynamic keys to fetch data based on the route params
+const { data: dataDynamic, error: errorDynamic } = await useAsyncData(
+  () => `items-${route.params.id}`, // trigger a re-fetch when the route
+  async () => await $trpc.items.get.query({ id: route.params.id }),
+);
+
+// use Promise.all to fetch multiple queries in parallel. this makes the pages
+// load way faster and makes use of trpc batching
+const [
+  { data: dataItems, error: errorItems },
+  { data: dataFiles, error: errorFiles },
+] = await Promise.all([$trpc.items.list.query(), $trpc.files.list.query()]);
+</script>
+```
+
+## Form handling
+
+If you need to handle a form, you can use the following pattern:
+
+Always leave the actual page calls to the top page, if possible. Most
+communication should be via emits and props.
+
+Create a `FormItem.vue` component and use it in the page. Check [Form
+Rules](mdc:.cursor/rules/ui-form.mdc) for details. Basically, it should, at
+least, have a `@submit({ data })` event that will be triggered when the form is
+already validated and submitted
+
+```vue
+<script setup lang="ts">
+const { $trpc } = useNuxtApp();
+import type { FormItemData } from "~~/components/FormItem.vue";
+
+// always create a onSubmit function that will be used to handle the form
+// submission
+// prefer using async functions over const functions, because they can be
+// referenced above in the code, while the const functions must be already
+// defined
+async function onSubmit(data: FormItemData) {
+  await $trpc.items.create.mutate(data);
+}
+// if you have multiple forms in the same page, use onSubmit<Entity> to handle
+// the form submission
+</script>
+
+<template>
+  <FormItem
+    @submit="
+      async (e) => {
+        await onSubmit(e.data);
+        // refresh some state, for example, a query or table to reflect the
+        // changes
+        // example: await refreshItems()
+      }
+    "
+  />
+</template>
+```
+
+## Nested pages
+
+We can make use of nested `<NuxtPage />` components to render the subpages.
+
+For example, the following page structure:
+
+```bash
+app/pages/
+├── demo
+│   ├── page-a.vue  # /demo/page-a
+│   ├── page-b.vue  # /demo/page-b
+│   └── page-c.vue  # /demo/page-c
+└── demo.vue        # /demo
+```
+
+The `demo.vue` page will render the subpages in the `<NuxtPage />` component:
+
+```vue
+<!-- app/pages/demo.vue -->
+<template>
+  <div>
+    <h1>Demo</h1>
+    <!-- will render the subpages page-* -->
+    <NuxtPage />
+  </div>
+</template>
+```
+
+## Param validation
+
+If you need to validate the route params, you can use the following pattern:
+
+```vue
+<!-- app/pages/demo/[id].vue -->
+<script setup lang="ts">
+import * as z from "zod";
+
+const route = useRoute();
+
+// used to validate path params: eg: /demo/00000000-0000-0000-0000-000000000000
+const schemaParams = z.object({ id: z.string().uuid() });
+// used to validate query params: eg: /demo?page=1
+const schemaQuery = z.object({ page: z.number().default(1).min(1).max(100) });
+
+// definePageMeta is a compiler marco that allows us to add inline stuff to the
+// page
+definePageMeta({
+  // validate the route
+  validate: (route) => {
+    const resQuery = schemaQuery.safeParse(route.query);
+    const resParams = schemaParams.safeParse(route.params);
+    if (!resQuery.success)
+      throw createError({ status: 400, message: resQuery.error.message });
+    if (!resParams.success)
+      throw createError({ status: 400, message: resParams.error.message });
+    return true;
+  },
+});
+</script>
+```

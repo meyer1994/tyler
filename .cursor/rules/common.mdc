@@ -1,0 +1,46 @@
+---
+description: Applies common coding patterns and conventions for the Flower project
+alwaysApply: true
+---
+
+# Common Patterns
+
+## Tech Stack
+
+- Nuxt 4, Vue 3, Nuxt UI 4, Tailwind v4
+- tRPC, Drizzle ORM (SQLite/D1)
+- Cloudflare R2, Vectorize, Queues, KV
+- Better Auth
+- TypeScript (strict mode)
+
+## Style
+
+- No semicolons, trailing commas, 100 char lines, single quotes
+
+## Frontend
+
+- Use `<script setup lang="ts">`
+- Prefix components: `Table*.vue`, `Form*.vue`, `App*.vue`
+- Fetch data at page level with `useAsyncData` or `$trpc.*.useQuery()`
+- Child components are presentational (dumb)
+- Use Lucide icons: `i-lucide-*`
+- Use Simple icons for brand icons: `i-simple-icons-*`
+- Use `~~/` for root imports
+
+## Backend
+
+- Tables prefixed with `T`, relations with `R`
+- Keep tRPC procedures thin; logic in `server/lib/` or `server/utils/`
+- Context: `ctx.db`, `ctx.storage`, `ctx.vector`, `ctx.queue`, `ctx.session`
+
+## Detailed Guides
+
+- [Structure](mdc:.cursor/rules/structure.mdc)
+- [Database](mdc:.cursor/rules/database.mdc)
+- [tRPC Routes](mdc:.cursor/rules/trpc-routes.mdc)
+- [tRPC Client](mdc:.cursor/rules/trpc-client.mdc)
+- [Forms](mdc:.cursor/rules/ui-form.mdc)
+- [Tables](mdc:.cursor/rules/ui-table.mdc)
+- [Colors](mdc:.cursor/rules/ui-colors.mdc)
+- [Auth Server](mdc:.cursor/rules/auth-server.mdc)
+- [Auth Client](mdc:.cursor/rules/auth-client.mdc)

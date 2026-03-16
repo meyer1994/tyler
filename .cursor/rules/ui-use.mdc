@@ -1,0 +1,26 @@
+---
+globs: app/**/*.vue
+alwaysApply: false
+---
+
+# VueUse examples
+
+## UseClipboard
+
+```vue
+<script setup lang="ts">
+import { UseClipboard } from "@vueuse/components";
+</script>
+
+<template>
+  <UseClipboard v-slot="{ copy, copied }" :source="dataToBeCopied">
+    <UButton
+      :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+      :color="copied ? 'success' : 'neutral'"
+      label="Copy"
+      variant="outline"
+      @click="() => copy() /* or copy(dataToBeCopied) */"
+    />
+  </UseClipboard>
+</template>
+```
