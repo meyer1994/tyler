@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: app
+        working-directory: ./app
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-          cache_dependency_path: app/pnpm-lock.yaml
+          cache_dependency_path: ./pnpm-lock.yaml
       - uses: actions/setup-node@v4
         with:
           node-version: 22

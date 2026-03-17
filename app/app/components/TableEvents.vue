@@ -141,7 +141,10 @@ const table = useTemplateRef('table')
       </template>
 
       <template #createdAt-cell="{ row }">
-        <NuxtTime :datetime="row.original.createdAt" title />
+        <NuxtTime
+          :datetime="row.original.createdAt"
+          title
+        />
       </template>
     </UTable>
   </div>
