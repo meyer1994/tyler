@@ -17,7 +17,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-          cache_dependency_path: ./pnpm-lock.yaml
+          cache_dependency_path: ./app/pnpm-lock.yaml
       - uses: actions/setup-node@v4
         with:
           node-version: 22
