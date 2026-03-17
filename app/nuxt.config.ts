@@ -15,13 +15,10 @@ export default defineNuxtConfig({
     database: {
       url: process.env.DATABASE_URL,
     },
-    aws: {
-      bucket: process.env.NUXT_AWS_BUCKET,
-    },
   },
 
   build: {
-    transpile: ['trpc-nuxt'],
+    transpile: ['trpc-nuxt', 'leaflet'],
   },
 
   compatibilityDate: '2026-01-21',

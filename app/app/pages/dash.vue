@@ -3,37 +3,17 @@ import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 
 definePageMeta({ auth: true })
 
-const { user, signOut, client: auth } = useAuth()
+const { user, signOut } = useAuth()
+
+const navItems: NavigationMenuItem[] = [
+  {
+    label: 'Maps',
+    icon: 'i-lucide-map',
+    to: '/dash/maps',
+  },
+]
 
 const profileItems: DropdownMenuItem[][] = [
-  [
-    {
-      label: 'Profile',
-      icon: 'i-lucide-user',
-      to: '/dash/profile',
-    },
-    {
-      label: 'Settings',
-      icon: 'i-lucide-settings',
-      to: '/dash/settings',
-    },
-  ],
-  [
-    {
-      label: 'Billing',
-      icon: 'i-lucide-credit-card',
-      to: '/dash/billing',
-    },
-    {
-      label: 'Portal',
-      icon: 'i-lucide-external-link',
-      onSelect: async () => {
-        const { data, error } = await auth.subscription.billingPortal()
-        if (error) throw error
-        await navigateTo(data.url, { external: true })
-      },
-    },
-  ],
   [
     {
       label: 'Sign out',
@@ -44,34 +24,6 @@ const profileItems: DropdownMenuItem[][] = [
       },
     },
   ],
-]
-
-const itemsDemo: NavigationMenuItem[] = [
-  {
-    label: 'Demo',
-    icon: 'i-lucide-flask-conical',
-    to: '/dash/demo',
-  },
-  {
-    label: 'Organizations',
-    icon: 'i-lucide-building-2',
-    to: '/dash/orgs',
-  },
-  {
-    label: 'API Keys',
-    icon: 'i-lucide-key',
-    to: '/dash/keys',
-  },
-  {
-    label: 'Playground',
-    icon: 'i-lucide-terminal',
-    to: '/dash/playground',
-  },
-  {
-    label: 'Queue',
-    icon: 'i-lucide-list-todo',
-    to: '/dash/queue',
-  },
 ]
 </script>
 
@@ -92,7 +44,7 @@ const itemsDemo: NavigationMenuItem[] = [
             class="size-6 text-primary"
           />
           <template v-if="!collapsed">
-            flower
+            trackows
           </template>
         </NuxtLink>
       </template>
@@ -101,7 +53,7 @@ const itemsDemo: NavigationMenuItem[] = [
         <UNavigationMenu
           :block="collapsed"
           :collapsed="collapsed"
-          :items="itemsDemo"
+          :items="navItems"
           orientation="vertical"
         />
       </template>

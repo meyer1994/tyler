@@ -1,8 +1,5 @@
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server'
-import { filesRouter } from '~~/server/trpc/files'
-import { itemsRouter } from '~~/server/trpc/items'
-import { queueRouter } from '~~/server/trpc/queue'
-import { vectorRouter } from '~~/server/trpc/vector'
+import { eventsRouter } from '~~/server/trpc/events'
 import { baseProcedure, createTRPCRouter } from '../lib/trpc'
 
 export const appRouter = createTRPCRouter({
@@ -11,10 +8,7 @@ export const appRouter = createTRPCRouter({
   health: baseProcedure
     .query(() => ({ status: 'ok', timestamp: new Date().toISOString() })),
 
-  items: itemsRouter,
-  files: filesRouter,
-  vector: vectorRouter,
-  queue: queueRouter,
+  events: eventsRouter,
 })
 
 // export type definition of API

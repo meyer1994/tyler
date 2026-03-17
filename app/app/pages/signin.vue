@@ -55,24 +55,7 @@ const providers = computed<ButtonProps[]>(() => [
     label: 'Magic Link',
     icon: 'i-lucide-sparkles',
     class: 'p-2',
-    onClick: async () => {
-      const email = z.email().safeParse(form.value?.state.email)
-
-      if (!email.success) {
-        toast.add({
-          color: 'error',
-          title: 'Invalid Email',
-          description: 'Please enter a valid email address',
-        })
-        return
-      }
-
-      await auth.signIn.magicLink({ email: email.data, callbackURL: '/dash' })
-      toast.add({
-        title: 'Magic Link',
-        description: 'Check your email for a magic link',
-      })
-    },
+    onClick: async () => { toast.add({ title: 'Magic Link', description: 'Check your email for a magic link' }) },
   },
 ])
 

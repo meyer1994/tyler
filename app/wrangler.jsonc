@@ -4,7 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "flower",
+	"name": "trackows",
 	"main": "./.output/server/index.mjs",
 	"compatibility_date": "2026-01-09",
 	"observability": {
@@ -27,21 +27,9 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "flower",
-			"database_id": "ced49fa0-2b3e-406b-95a0-56666f8c918e",
+			"database_name": "trackows",
+			"database_id": "09190827-115f-44b7-ab04-2154ddceb3b2",
 			"migrations_dir": "./server/db/migrations"
-		}
-	],
-	"r2_buckets": [
-		{
-			"binding": "BUCKET",
-			"bucket_name": "flower"
-		}
-	],
-	"kv_namespaces": [
-		{
-			"binding": "KV",
-			"id": "a93e975a94f9452494767c8244563579"
 		}
 	],
 	/**
@@ -60,32 +48,6 @@
 	"assets": {
 		"directory": "./.output/public/",
 		"binding": "ASSETS"
-	},
-	"vectorize": [
-		{
-			"binding": "VECTORIZE",
-			"index_name": "flower",
-			"remote": true
-		}
-	],
-	"ai": {
-		"binding": "AI",
-		"remote": true
-	},
-	"queues": {
-		"producers": [
-			{
-				"binding": "QUEUE",
-				"queue": "flower"
-			}
-		],
-		"consumers": [
-			{
-				"queue": "flower",
-				"max_batch_size": 10,
-				"max_retries": 0,
-			}
-		]
 	}
 	/**
 	 * Service Bindings (communicate between multiple Workers)

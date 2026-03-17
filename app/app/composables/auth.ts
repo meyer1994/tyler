@@ -1,5 +1,3 @@
-import { stripeClient } from '@better-auth/stripe/client'
-import { apiKeyClient, magicLinkClient, organizationClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/vue'
 
 export function useAuth() {
@@ -9,12 +7,7 @@ export function useAuth() {
   const client = createAuthClient({
     baseURL: url.origin,
     fetchOptions: { headers },
-    plugins: [
-      organizationClient(),
-      apiKeyClient(),
-      stripeClient({ subscription: true }),
-      magicLinkClient(),
-    ],
+    plugins: [],
   })
 
   const { data, refresh } = useAsyncData('session', async () => {
@@ -46,7 +39,6 @@ export function useAuth() {
     fetchSession,
     signIn: client.signIn,
     signUp: client.signUp,
-    apiKey: client.apiKey,
   }
 }
 
