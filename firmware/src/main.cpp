@@ -10,13 +10,15 @@
 
 const char* WIFI_SSID     = "my-network";
 const char* WIFI_PASSWORD = "my-password";
-const char* SERVER_URL    = "http://example.com/gps";
+const char* SERVER_URL    = "https://trackows.meyer1994.workers.dev/api/send";
+const char* BOARD_ID      = "1234567890";
 
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(2);
 
 bool lastButtonState = HIGH;
 uint32_t lastDebugMs = 0;
+uint32_t lastSendMs = 0;
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
@@ -95,15 +97,13 @@ void handleWifi() {
 
     HTTPClient http;
     String url = String(SERVER_URL) +
-                 "?lat=" + String(gps.location.lat(), 6) +
-                 "&lng=" + String(gps.location.lng(), 6);
+                 "?bid=" + String(BOARD_ID) +
+                 "&lat=" + String(gps.location.lat(), 6) +
+                 "&lon=" + String(gps.location.lng(), 6);
 
     http.begin(url);
     int httpCode = http.GET();
-    if (httpCode > 0)
-        Serial.printf("HTTP %d | Response: %s\n", httpCode, http.getString().c_str());
-    else
-        Serial.printf("HTTP error: %s\n", http.errorToString(httpCode).c_str());
+    Serial.printf("HTTP %d\n", httpCode);
     http.end();
 }
 
@@ -135,10 +135,13 @@ void loop() {
     }
 
     bool currentState = digitalRead(BUTTON_PIN);
-    if (currentState == LOW && lastButtonState == HIGH) {
-        //handleGPS();
+    bool buttonPressed = (currentState == LOW && lastButtonState == HIGH);
+    bool timerFired = (millis() - lastSendMs > 5000);
+
+    if (buttonPressed || timerFired) {
+        lastSendMs = millis();
         handleWifi();
-        delay(50);
+        if (buttonPressed) delay(50);
     }
     lastButtonState = currentState;
 }
