@@ -9,6 +9,7 @@ export const eventsRouter = createTRPCRouter({
         .select()
         .from(events)
         .orderBy(desc(events.createdAt))
+        .limit(1000)
         .all()
     }),
 })

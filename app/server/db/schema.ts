@@ -20,4 +20,5 @@ export const events = sqliteTable('events', {
 table => [
   index('events_board_id_idx').on(table.boardId),
   index('events_created_at_idx').on(table.createdAt),
+  index('events_lat_lon_idx').on(table.lat, table.lon),
 ])

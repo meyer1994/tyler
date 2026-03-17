@@ -65,6 +65,7 @@ const onSubmit = async (e: FormSubmitEvent<Schema>) => {
     password: e.data.password,
     callbackURL: '/dash',
   })
+  await navigateTo('/dash')
 }
 </script>
 
