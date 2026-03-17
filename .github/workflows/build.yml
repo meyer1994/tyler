@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
-          cache_dependency_path: ./pnpm-lock.yaml
+          cache-dependency-path: ./pnpm-lock.yaml
       - run: pnpm install
       - run: pnpm run lint
       - run: pnpm run typecheck
