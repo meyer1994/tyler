@@ -193,20 +193,39 @@ private:
             _sleep(FIX_TIMEOUT);
         }
 
-        _serial.end();
-        _task = nullptr;
-
         xEventGroupSetBits(_events, STOPPED_BIT);
         vTaskDelete(NULL);
+
+        _serial.end();
+        _task = nullptr;
     }
 };
 
 
-GpsManager gps;
-WiFiManager wifi;
+static GpsManager gps;
+static WiFiManager wifi;
+
+void deepSleep() {
+    gps.stop();
+    wifi.disconnect();
+
+    if (!wifi.waitDisconnected()) {
+        Serial.println("WiFi disconnect failed");
+    } else {
+        Serial.println("WiFi disconnected");
+    }
+
+    if (!gps.waitStopped()) {
+        Serial.println("GPS stop failed");
+    } else {
+        Serial.println("GPS stopped");
+    }
+
+    esp_sleep_enable_timer_wakeup(SLEEP_INTERVAL_US);
+    esp_deep_sleep_start();
+}
 
 void setup() {
-
     Serial.begin(115200);
     Serial.println("Starting up...");
 
@@ -216,14 +235,14 @@ void setup() {
 
     if (!gps.waitFix(90000)) {
         Serial.println("GPS fix failed");
-        return;
+        deepSleep();
     }
     Serial.println("GPS fix acquired");
     gps.stop();
 
     if (!wifi.waitConnected()) {
         Serial.println("WiFi connection failed");
-        return;
+        deepSleep();
     }
     Serial.println("WiFi connected");
 
@@ -233,8 +252,7 @@ void setup() {
     Serial.printf("GPS fix: %f, %f, %d\r\n", fix.lat, fix.lng, fix.sats);
 
     Serial.printf("Entering deep sleep for %llu seconds\r\n", SLEEP_INTERVAL_US / 1000000ULL);
-    esp_sleep_enable_timer_wakeup(SLEEP_INTERVAL_US);
-    esp_deep_sleep_start();
+    deepSleep();
 }
 
 void loop() {
