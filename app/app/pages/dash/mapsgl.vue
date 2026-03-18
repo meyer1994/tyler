@@ -27,6 +27,9 @@ const { data: events, error } = await useAsyncData(
 )
 
 if (error.value) throw createError(error.value)
+
+const popupShow = ref(false)
+const popupCoordinates = ref<[number, number]>([-48.5011, -27.5949])
 </script>
 
 <template>
@@ -38,6 +41,16 @@ if (error.value) throw createError(error.value)
       :zoom="10"
       :map-style="'https://tiles.openfreemap.org/styles/liberty'"
     >
+      <MglPopup
+        v-if="popupShow"
+        :coordinates="popupCoordinates"
+        @close="popupShow = false"
+      >
+        <div class="bg-muted p-2 rounded-md">
+          <h1>Hello</h1>
+        </div>
+      </MglPopup>
+
       <MglGeoJsonSource
         source-id="events-geojson-source"
         :data="events ?? { type: 'FeatureCollection', features: [] }"
@@ -45,6 +58,10 @@ if (error.value) throw createError(error.value)
         <MglCircleLayer
           layer-id="events-circle-layer"
           source="events-geojson-source"
+          @click="e => {
+            popupShow = true
+            popupCoordinates = e.lngLat
+          }"
           :paint="{
             'circle-color': [
               'interpolate',
