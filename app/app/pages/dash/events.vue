@@ -1,11 +1,13 @@
 <script setup lang="ts">
 const { $trpc } = useNuxtApp()
 
-const { data, status, refresh } = await useAsyncData(
+const { data, status, refresh, error } = await useAsyncData(
   'events-table',
   async () => await $trpc.events.list.query(),
   { default: () => [] },
 )
+
+if (error.value) throw createError(error.value)
 </script>
 
 <template>

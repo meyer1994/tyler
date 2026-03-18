@@ -8,11 +8,13 @@ const { $trpc } = useNuxtApp()
 const zoom = ref(12)
 const center = ref<PointExpression>([-27.5954, -48.5480]) // Florianópolis, Brazil
 
-const { data: events } = await useAsyncData(
+const { data: events, error } = await useAsyncData(
   'events-leaflet',
   async () => await $trpc.events.list.query(),
   { default: () => [], server: false },
 )
+
+if (error.value) throw createError(error.value)
 </script>
 
 <template>
