@@ -9,6 +9,11 @@ export const eventsRouter = createTRPCRouter({
         .select()
         .from(events)
         .orderBy(desc(events.createdAt))
+        // .where(
+        //   and(
+        //     isNotNull(events.boardId),
+        //     isNotNull(events.lat),
+        //     isNotNull(events.lon)))
         .limit(1000)
         .all()
     }),

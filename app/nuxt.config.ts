@@ -1,6 +1,12 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ['@nuxt/eslint', '@vueuse/nuxt', '@nuxt/ui', 'nitro-cloudflare-dev'],
+  modules: [
+    '@nuxt/eslint',
+    '@vueuse/nuxt',
+    '@nuxt/ui',
+    'nitro-cloudflare-dev',
+    'nuxt-maplibre',
+  ],
 
   devtools: {
     enabled: false,
@@ -29,6 +35,17 @@ export default defineNuxtConfig({
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
+    },
+  },
+
+  vite: {
+    optimizeDeps: {
+      include: [
+        'maplibre-gl',
+        'leaflet',
+        '@trpc/client',
+        'better-auth/vue',
+      ],
     },
   },
 

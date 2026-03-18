@@ -19,6 +19,8 @@
     "cf:deploy": "wrangler --cwd .output deploy",
     "cf:types": "wrangler types shared/wrangler.d.ts && eslint --fix shared/wrangler.d.ts",
     "cf:migrate": "wrangler d1 migrations apply trackows",
+    "cf:dump": "wrangler d1 export trackows --output .data/dump.sqlite",
+    "cf:import": "wrangler d1 execute trackows --file .data/dump.sqlite",
     "cf:secrets": "wrangler secret bulk .env"
   },
   "dependencies": {
@@ -34,7 +36,9 @@
     "better-auth": "^1.5.5",
     "drizzle-orm": "^0.45.1",
     "leaflet": "^1.9.4",
+    "mitt": "^3.0.1",
     "nuxt": "^4.4.2",
+    "nuxt-maplibre": "1.2.2",
     "trpc-nuxt": "^2.0.2",
     "vue": "^3.5.30",
     "vue-router": "^5.0.3",
@@ -43,16 +47,17 @@
   "devDependencies": {
     "@better-auth/cli": "^1.4.21",
     "@iconify-json/lucide": "^1.2.98",
+    "@types/geojson": "^7946.0.16",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^25.5.0",
     "dotenv-cli": "^11.0.0",
-    "drizzle-kit": "^0.31.9",
-    "eslint": "^10.0.3",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.4",
     "mcp-remote": "^0.1.38",
     "nitro-cloudflare-dev": "^0.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vue-tsc": "^3.2.5",
-    "wrangler": "^4.74.0"
+    "vue-tsc": "^3.2.6",
+    "wrangler": "^4.75.0"
   }
 }

@@ -1,0 +1,1 @@
+CREATE INDEX `events_lat_lon_idx` ON `events` (`lat`,`lon`);

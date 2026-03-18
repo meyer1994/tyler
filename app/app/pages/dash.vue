@@ -16,6 +16,11 @@ const navItems: NavigationMenuItem[] = [
     icon: 'i-lucide-table',
     to: '/dash/events',
   },
+  {
+    label: 'MapPoints',
+    icon: 'i-lucide-map-pin',
+    to: '/dash/mapsgl',
+  },
 ]
 
 const profileItems: DropdownMenuItem[][] = [

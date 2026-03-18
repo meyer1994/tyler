@@ -9,7 +9,7 @@ const zoom = ref(12)
 const center = ref<PointExpression>([-27.5954, -48.5480]) // Florianópolis, Brazil
 
 const { data: events } = await useAsyncData(
-  'events',
+  'events-leaflet',
   async () => await $trpc.events.list.query(),
   { default: () => [], server: false },
 )
