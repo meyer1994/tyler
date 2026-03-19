@@ -41,8 +41,8 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
-        'maplibre-gl',
         'leaflet',
+        'maplibre-gl',
         '@trpc/client',
         'better-auth/vue',
       ],

@@ -1,21 +1,18 @@
 <script setup lang="ts">
-const { $trpc } = useNuxtApp()
-
-const { data, status, refresh, error } = await useAsyncData(
-  'events-table',
-  async () => await $trpc.events.list.query(),
-  { default: () => [] },
-)
-
-if (error.value) throw createError(error.value)
 </script>
 
 <template>
-  <div class="h-full w-full p-4 flex flex-col">
-    <TableEvents
-      :items="data"
-      :loading="status === 'pending'"
-      @refresh-table="refresh"
-    />
-  </div>
+  <AsyncFetch
+    v-slot="{ data, status, refresh }"
+    fetch-key="events"
+    :handler="async () => await $trpc.events.list.query()"
+  >
+    <div class="h-full w-full p-4 flex flex-col">
+      <TableEvents
+        :items="data ?? []"
+        :loading="status === 'pending'"
+        @refresh-table="refresh"
+      />
+    </div>
+  </AsyncFetch>
 </template>

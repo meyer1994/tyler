@@ -3,22 +3,16 @@ import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet'
 import type { PointExpression } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const { $trpc } = useNuxtApp()
-
 const zoom = ref(12)
 const center = ref<PointExpression>([-27.5954, -48.5480]) // Florianópolis, Brazil
-
-const { data: events, error } = await useAsyncData(
-  'events-leaflet',
-  async () => await $trpc.events.list.query(),
-  { default: () => [], server: false },
-)
-
-if (error.value) throw createError(error.value)
 </script>
 
 <template>
-  <div class="h-full w-full">
+  <AsyncFetch
+    v-slot="{ data }"
+    fetch-key="events"
+    :handler="async () => await $trpc.events.list.query()"
+  >
     <ClientOnly>
       <LMap
         v-model:zoom="zoom"
@@ -33,13 +27,13 @@ if (error.value) throw createError(error.value)
         />
 
         <LMarker
-          v-for="event in events"
+          v-for="event in data"
           :key="event.id"
           :lat-lng="[event.lat, event.lon]"
         />
       </LMap>
     </ClientOnly>
-  </div>
+  </AsyncFetch>
 </template>
 
 <style>

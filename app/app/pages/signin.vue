@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AuthFormField, ButtonProps, FormSubmitEvent } from '@nuxt/ui'
+import type { AuthFormField, ButtonProps } from '@nuxt/ui'
 import * as z from 'zod'
 
 const schema = z.object({
@@ -7,8 +7,6 @@ const schema = z.object({
   password: z.string('Password is required').min(8, 'Must be at least 8 characters'),
   remember: z.boolean().optional().default(false),
 })
-
-type Schema = z.output<typeof schema>
 
 const toast = useToast()
 const { client: auth, loggedIn } = useAuth()
@@ -36,8 +34,6 @@ const fields: AuthFormField[] = [
   },
 ]
 
-const form = useTemplateRef('form')
-
 const providers = computed<ButtonProps[]>(() => [
   {
     label: 'Google',
@@ -58,15 +54,6 @@ const providers = computed<ButtonProps[]>(() => [
     onClick: async () => { toast.add({ title: 'Magic Link', description: 'Check your email for a magic link' }) },
   },
 ])
-
-const onSubmit = async (e: FormSubmitEvent<Schema>) => {
-  await auth.signIn.email({
-    email: e.data.email,
-    password: e.data.password,
-    callbackURL: '/dash',
-  })
-  await navigateTo('/dash')
-}
 </script>
 
 <template>
@@ -75,16 +62,26 @@ const onSubmit = async (e: FormSubmitEvent<Schema>) => {
 
     <UContainer class="w-full md:w-md">
       <UPageCard v-if="!loggedIn">
-        <UAuthForm
-          ref="form"
+        <AsyncSubmit
+          v-slot="{ submit, status }"
           :schema="schema"
-          title="Sign in"
-          description="Enter your credentials to access your account."
-          icon="i-lucide-user"
-          :fields="fields"
-          :providers="providers"
-          @submit="async (e: FormSubmitEvent<unknown>) => await onSubmit(e as FormSubmitEvent<Schema>)"
-        />
+          :handler="async (data) => await auth.signIn.email({
+            email: data.email,
+            password: data.password,
+            callbackURL: '/dash',
+          })"
+        >
+          <UAuthForm
+            :schema="schema"
+            title="Sign in"
+            description="Enter your credentials to access your account."
+            icon="i-lucide-user"
+            :fields="fields"
+            :providers="providers"
+            :loading="status === 'pending'"
+            @submit="submit($event.data)"
+          />
+        </AsyncSubmit>
       </UPageCard>
     </UContainer>
   </div>
