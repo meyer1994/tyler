@@ -14,7 +14,7 @@ export const eventsRouter = createTRPCRouter({
         //     isNotNull(events.boardId),
         //     isNotNull(events.lat),
         //     isNotNull(events.lon)))
-        .limit(1000)
+        .limit(100)
         .all()
     }),
 })

@@ -57,6 +57,7 @@ const visible: Ref<Record<Keys, boolean>> = ref({
   lat: true,
   lon: true,
   createdAt: true,
+  updatedAt: false,
 })
 
 const table = useTemplateRef('table')
