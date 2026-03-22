@@ -3,18 +3,22 @@
 
 #include "./future.hpp"
 #include "./gps.hpp"
-#include "./wifi.hpp"
+#include "./cellular.hpp"
 
-#ifndef WIFI_SSID
-#error "WIFI_SSID is not defined"
+#ifndef SERVER_HOST
+#error "SERVER_HOST is not defined"
 #endif
 
-#ifndef WIFI_PASS
-#error "WIFI_PASS is not defined"
+#ifndef SERVER_PORT
+#error "SERVER_PORT is not defined"
 #endif
 
-#ifndef SERVER_URL
-#error "SERVER_URL is not defined"
+#ifndef SERVER_PATH
+#error "SERVER_PATH is not defined"
+#endif
+
+#ifndef CELLULAR_APN
+#error "CELLULAR_APN is not defined"
 #endif
 
 void setup() {
@@ -22,52 +26,44 @@ void setup() {
     Serial.println("Starting up...");
 
     GPS gps;
-    Wifi wifi;
+    Cellular cell;
 
     auto futGpsOpen = gps.open();
-    auto futWifiOpen = wifi.open(WIFI_SSID, WIFI_PASS);
+    auto futCellOpen = cell.open(CELLULAR_APN);
 
     auto resGpsOpen = futGpsOpen.wait(60000);
-    if (!resGpsOpen.has_value()) {
-        Serial.println("Failed to open GPS");
-        Serial.println(resGpsOpen.error().message);
-        return;
+    if (resGpsOpen.has_value()) {
+        Serial.println("GPS opened");
     } else {
-        Serial.println("GPS opened!");
+        Serial.println("GPS failed: " + resGpsOpen.error().message);
+        return;
     }
 
-    // wifi should already be connected at this point
-    auto resWifiOpen = futWifiOpen.wait(5000);
-    if (!resWifiOpen.has_value()) {
-        Serial.println("Failed to connect to WiFi");
-        Serial.println(resWifiOpen.error().message);
-        return;
+    auto resCellOpen = futCellOpen.wait(90000);
+    if (resCellOpen.has_value()) {
+        Serial.println("Cellular connected!");
     } else {
-        Serial.println("WiFi connected!");
+        Serial.println("Cellular failed: " + resCellOpen.error().message);
+        return;
     }
 
-    auto ip = wifi.ip();
+    auto ip = cell.ip();
     if (ip.has_value()) {
-        Serial.println("IP address: " + ip.value());
+        Serial.println("IP: " + ip.value());
     } else {
-        Serial.println("Failed to get IP address");
-        Serial.println(ip.error().message);
+        Serial.println("IP failed: " + ip.error().message);
         return;
     }
 
     auto futGpsFix = gps.fix();
     auto resGpsFix = futGpsFix.wait(10000);
     if (!resGpsFix.has_value()) {
-        Serial.println("Failed to get GPS fix");
-        Serial.println(resGpsFix.error().message);
+        Serial.println("GPS fix failed: " + resGpsFix.error().message);
         return;
     }
 
     auto fix = resGpsFix.value();
-    Serial.println("GPS fix acquired!");
     Serial.println("Lat: " + String(fix.lat, 6) + " Lng: " + String(fix.lng, 6));
-    Serial.println("Altitude: " + String(fix.altitude, 2) + "m");
-    Serial.println("Satellites: " + String(fix.satellites));
 
     String body = "{";
     body += "\"lat\":" + String(fix.lat, 6) + ",";
@@ -76,9 +72,8 @@ void setup() {
     body += "\"sat\":" + String(fix.satellites);
     body += "}";
     Serial.println("Body: " + body);
-
-    Serial.println("POST " + String(SERVER_URL));
-    auto res = wifi.post(SERVER_URL, body).wait(10000);
+    
+    auto res = cell.post(SERVER_HOST, SERVER_PORT, SERVER_PATH, body).wait(10000);
     if (res.has_value()) {
         Serial.println("POST " + String(res.value()));
     } else {
