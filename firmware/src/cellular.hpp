@@ -45,10 +45,11 @@ public:
             TinyGsmClient client(*modem);
             HttpClient http(client, host, port);
 
+            Serial.println("[cell] POST " + host + ":" + String(port) + path);
             http.post(path, "application/json", body);
             int code = http.responseStatusCode();
             http.skipResponseHeaders();
-            Serial.println("Response: " + http.responseBody());
+            Serial.println("[cell] response: " + http.responseBody());
             http.stop();
 
             if (code >= 0) return code;
@@ -75,7 +76,9 @@ public:
             SerialAT.begin(MODEM_BAUDRATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
             modem_ = std::make_shared<TinyGsm>(SerialAT);
 
+            Serial.println("[cell] powering on modem...");
             if (!modem_->testAT(10000)) return tl::make_unexpected(Error("modem not responding"));
+            Serial.println("[cell] modem OK");
 
             Serial.println("[cell] initializing modem...");
             if (!modem_->init()) return tl::make_unexpected(Error("modem init failed"));

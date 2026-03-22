@@ -6,7 +6,11 @@ const query = z.object({
   lat: z.number(),
   lon: z.number(),
   alt: z.number().optional(),
+  speed: z.number().optional(),
+  heading: z.number().optional(),
+  hdop: z.number().optional(),
   sat: z.number().optional(),
+  ts: z.string().optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -18,6 +22,12 @@ export default defineEventHandler(async (event) => {
     await db.insert(events).values({
       lat: body.lat,
       lon: body.lon,
+      alt: body.alt,
+      speed: body.speed,
+      heading: body.heading,
+      hdop: body.hdop,
+      sat: body.sat,
+      ts: body.ts,
       boardId: 'BOARD',
     })
   }

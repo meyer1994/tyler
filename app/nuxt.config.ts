@@ -50,7 +50,7 @@ export default defineNuxtConfig({
     server: {
       allowedHosts: [
         'free-loudly-dingo.ngrok-free.app',
-        'mitchell-throws-pine-medline.trycloudflare.com',
+        'addition-democratic-multimedia-actual.trycloudflare.com',
       ],
     },
   },

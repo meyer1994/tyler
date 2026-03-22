@@ -13,6 +13,12 @@ export const events = sqliteTable('events', {
     .notNull(),
   lon: real('lon')
     .notNull(),
+  alt: real('alt'),
+  speed: real('speed'),
+  heading: real('heading'),
+  hdop: real('hdop'),
+  sat: integer('sat'),
+  ts: text('ts'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .default(sql`(unixepoch('subsecond') * 1000)`),

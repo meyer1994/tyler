@@ -10544,3 +10544,461 @@ Response: {
   "ok": true
 }
 POST 200
+[cell] powering on modem...
+[gps] location valid, satellites: 10
+[main] GPS opened
+[3738] ### Unhandled: *ATREADY: 1
+[cell] modem OK
+[cell] initializing modem...
+[3840] ### TinyGSM Version: 1.0.0
+[3840] ### TinyGSM Compiled Module:  TinyGsmClientA7670
+[3884] ### Modem: A7670G-LLSE
+[3884] ### Modem: A7670G-LLSE
+[4893] ### Unhandled: +CME ERROR: SIM failure
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.165.26.101
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031221, -51.208874
+[main] body: {"lat":-30.031221,"lon":-51.208874,"alt":75.00,"sat":9}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[10491] ### Closed:  0
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+[cell] powering on modem...
+[gps] location valid, satellites: 0
+[main] GPS opened
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.165.47.215
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031219, -51.208849
+[main] body: {"lat":-30.031219,"lon":-51.208849,"alt":75.10,"sat":9}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+€xx €x[cell] waiting for network...
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[gps] location valid, satellites: 9
+[main] GPS opened
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.165.248.22
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031274, -51.208801
+[main] body: {"lat":-30.031274,"lon":-51.208801,"alt":79.20,"speed":0.0,"heading":81.2,"hdop":1.5,"sat":9,"ts":"2026-03-22T21:51:45Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+E (15397) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (15397) task_wdt:  - IDLE0 (CPU 0)
+E (15397) task_wdt: Tasks currently running:
+E (15397) task_wdt: CPU 0: cell_post
+E (15397) task_wdt: CPU 1: IDLE1
+E (15397) task_wdt: Aborting.
+
+abort() was called at PC 0x400df205 on core 0
+
+
+Backtrace: 0x40083491:0x3ffbea0c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: b64ed74b0f784b9f
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[gps] location valid, satellites: 10
+[main] GPS opened
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.166.4.192
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031273, -51.208802
+[main] body: {"lat":-30.031273,"lon":-51.208802,"alt":78.90,"speed":0.0,"heading":81.2,"hdop":1.4,"sat":10,"ts":"2026-03-22T21:52:04Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.124.73.37
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031281, -51.208801
+[main] body: {"lat":-30.031281,"lon":-51.208801,"alt":77.90,"speed":0.0,"heading":230.9,"hdop":2.4,"sat":8,"ts":"2026-03-22T21:54:20Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+[main] sleeping for 60s...
+ets Jul 29 2019 12:21:46
+
+rst:0x5 (DEEPSLEEP_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[gps] location valid, satellites: 9
+[main] GPS opened
+[main] cellular connected
+[main] IP: 10.124.73.37
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031259, -51.208820
+[main] body: {"lat":-30.031259,"lon":-51.208820,"alt":76.80,"speed":0.0,"heading":84.5,"hdop":1.5,"sat":9,"ts":"2026-03-22T21:55:22Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+E (15316) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (15316) task_wdt:  - IDLE0 (CPU 0)
+E (15316) task_wdt: Tasks currently running:
+E (15316) task_wdt: CPU 0: cell_post
+E (15316) task_wdt: CPU 1: IDLE1
+E (15316) task_wdt: Aborting.
+
+abort() was called at PC 0x400df27d on core 0
+
+
+Backtrace: 0x400835e9:0x3ffbea5c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: 1a5aea45ffd2b1fb
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[gps] location valid, satellites: 9
+[main] GPS opened
+[cell] powering on modem...
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.166.164.172
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031255, -51.208826
+[main] body: {"lat":-30.031255,"lon":-51.208826,"alt":76.00,"speed":0.0,"heading":304.6,"hdop":1.5,"sat":9,"ts":"2026-03-22T21:55:41Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+[main] sleeping for 60s...
+ets Jul 29 2019 12:21:46
+
+rst:0x5 (DEEPSLEEP_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[gps] location valid, satellites: 9
+[main] GPS opened
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.166.164.172
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031309, -51.208674
+[main] body: {"lat":-30.031309,"lon":-51.208674,"alt":82.80,"speed":0.0,"heading":0.0,"hdop":1.4,"sat":9,"ts":"2000-00-00T21:56:43Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+E (15934) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (15934) task_wdt:  - IDLE0 (CPU 0)
+E (15934) task_wdt: Tasks currently running:
+E (15934) task_wdt: CPU 0: cell_post
+E (15934) task_wdt: CPU 1: IDLE1
+E (15934) task_wdt: Aborting.
+
+abort() was called at PC 0x400df27d on core 0
+
+
+Backtrace: 0x400835e9:0x3ffbea5c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: 1a5aea45ffd2b1fb
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[gps] location valid, satellites: 10
+[main] GPS opened
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.81.244.176
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031319, -51.208679
+[main] body: {"lat":-30.031319,"lon":-51.208679,"alt":83.90,"speed":0.0,"heading":59.0,"hdop":1.4,"sat":10,"ts":"2026-03-22T21:57:02Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+[main] sleeping for 60s...
+ets Jul 29 2019 12:21:46
+
+rst:0x5 (DEEPSLEEP_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[gps] location valid, satellites: 9
+[main] GPS opened
+[main] cellular connected
+[main] IP: 10.81.244.176
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031316, -51.208767
+[main] body: {"lat":-30.031316,"lon":-51.208767,"alt":81.40,"speed":0.0,"heading":265.2,"hdop":1.5,"sat":9,"ts":"2026-03-22T21:58:04Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+E (15974) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (15974) task_wdt:  - IDLE0 (CPU 0)
+E (15974) task_wdt: Tasks currently running:
+E (15974) task_wdt: CPU 0: cell_post
+E (15974) task_wdt: CPU 1: IDLE1
+E (15974) task_wdt: Aborting.
+
+abort() was called at PC 0x400df27d on core 0
+
+
+Backtrace: 0x400835e9:0x3ffbea5c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: 1a5aea45ffd2b1fb
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[gps] location valid, satellites: 9
+[main] GPS opened
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.167.22.204
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031312, -51.208778
+[main] body: {"lat":-30.031312,"lon":-51.208778,"alt":82.20,"speed":0.0,"heading":265.2,"hdop":1.5,"sat":9,"ts":"2026-03-22T21:58:23Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+[main] sleeping for 60s...
+ets Jul 29 2019 12:21:46
+
+rst:0x5 (DEEPSLEEP_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[gps] location valid, satellites: 8
+[main] GPS opened
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.167.22.204
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031319, -51.208819
+[main] body: {"lat":-30.031319,"lon":-51.208819,"alt":80.80,"speed":0.0,"heading":265.2,"hdop":1.5,"sat":8,"ts":"2026-03-22T21:59:25Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[main] POST failed: timeout
+[main] sleeping for 60s...
+[cell] powering on modem...
+[gps] location valid, satellites: 0
+[main] GPS opened
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[main] cellular connected
+[main] IP: 10.167.97.151
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031309, -51.208830
+[main] body: {"lat":-30.031309,"lon":-51.208830,"alt":81.50,"speed":0.0,"heading":265.2,"hdop":1.4,"sat":9,"ts":"2026-03-22T21:59:57Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[cell] response: {
+  "ok": true
+}
+[main] POST 200
+[main] sleeping for 60s...
+ets Jul 29 2019 12:21:46
+
+rst:0x5 (DEEPSLEEP_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+[main] starting up...
+[gps] opening serial...
+[gps] waiting for valid location...
+[cell] powering on modem...
+[cell] modem OK
+[cell] initializing modem...
+[cell] waiting for network...
+[cell] operator: 72405
+[cell] connecting GPRS (apn: claro.com.br)...
+[cell] GPRS connected!
+[gps] location valid, satellites: 9
+[main] GPS opened
+[main] cellular connected
+[main] IP: 10.167.97.151
+[gps] waiting for fresh fix...
+[gps] fix acquired: -30.031212, -51.208858
+[main] body: {"lat":-30.031212,"lon":-51.208858,"alt":43.80,"speed":0.0,"heading":265.2,"hdop":2.0,"sat":9,"ts":"2026-03-22T22:01:10Z"}
+[cell] POST addition-democratic-multimedia-actual.trycloudflare.com:80/api/event
+[main] POST failed: timeout
+[main] sleeping for 60s...
