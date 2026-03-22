@@ -19,7 +19,7 @@
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("Connecting to WiFi..." + String(WIFI_SSID));
+    Serial.println("Starting up...");
 
     GPS gps;
     Wifi wifi;
@@ -57,15 +57,32 @@ void setup() {
 
     auto futGpsFix = gps.fix();
     auto resGpsFix = futGpsFix.wait(10000);
-    if (resGpsFix.has_value()) {
-        Serial.println("GPS fix acquired!");
-        Serial.println(
-            "Lat: " + String(resGpsFix.value().lat, 6) + " " + 
-            "Lng: " + String(resGpsFix.value().lng, 6)
-        );
-    } else {
+    if (!resGpsFix.has_value()) {
         Serial.println("Failed to get GPS fix");
         Serial.println(resGpsFix.error().message);
+        return;
+    }
+
+    auto fix = resGpsFix.value();
+    Serial.println("GPS fix acquired!");
+    Serial.println("Lat: " + String(fix.lat, 6) + " Lng: " + String(fix.lng, 6));
+    Serial.println("Altitude: " + String(fix.altitude, 2) + "m");
+    Serial.println("Satellites: " + String(fix.satellites));
+
+    String body = "{";
+    body += "\"lat\":" + String(fix.lat, 6) + ",";
+    body += "\"lon\":" + String(fix.lng, 6) + ",";
+    body += "\"alt\":" + String(fix.altitude, 2) + ",";
+    body += "\"sat\":" + String(fix.satellites);
+    body += "}";
+    Serial.println("Body: " + body);
+
+    Serial.println("POST " + String(SERVER_URL));
+    auto res = wifi.post(SERVER_URL, body).wait(10000);
+    if (res.has_value()) {
+        Serial.println("POST " + String(res.value()));
+    } else {
+        Serial.println("POST failed: " + res.error().message);
     }
 }
 

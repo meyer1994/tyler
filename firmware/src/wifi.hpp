@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include <HTTPClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include "./future.hpp"
 
 class Wifi {
@@ -11,6 +13,28 @@ public:
         if (WiFi.status() != WL_CONNECTED)
             return tl::make_unexpected(Error("not connected"));
         return WiFi.localIP().toString();
+    }
+
+    SharedFuture<int> post(const String& url, const String& body) {
+        return SharedFuture<int>([url, body]() -> SharedFuture<int>::Result {
+            if (WiFi.status() != WL_CONNECTED)
+                return tl::make_unexpected(Error("not connected"));
+
+            HTTPClient http;
+            WiFiClientSecure client;
+
+            client.setInsecure();
+            http.begin(client, url);
+            http.addHeader("Content-Type", "application/json");
+            http.addHeader("Connection", "close");
+            
+            int code = http.POST(body);
+            if (code >= 0) return code;
+            Serial.println("Response: " + http.getString());
+            http.end();
+
+            return tl::make_unexpected(Error(HTTPClient::errorToString(code)));
+        }, "wifi_post", 16384);
     }
 
     SharedFuture<bool> open(const char* ssid, const char* pass) {
