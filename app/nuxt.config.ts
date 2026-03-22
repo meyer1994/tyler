@@ -47,6 +47,12 @@ export default defineNuxtConfig({
         'better-auth/vue',
       ],
     },
+    server: {
+      allowedHosts: [
+        'free-loudly-dingo.ngrok-free.app',
+        'mitchell-throws-pine-medline.trycloudflare.com',
+      ],
+    },
   },
 
   typescript: {
