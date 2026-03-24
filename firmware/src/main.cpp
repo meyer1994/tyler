@@ -26,7 +26,7 @@ void run(GPS& gps, Cellular& cell) {
     auto futGpsOpen = gps.open();
     auto futCellOpen = cell.open(CELLULAR_APN);
 
-    auto resGpsOpen = futGpsOpen.wait(60000);
+    auto resGpsOpen = futGpsOpen.wait(90000);
     if (resGpsOpen.has_value()) {
         Serial.println("[main] GPS opened");
     } else {
@@ -34,7 +34,7 @@ void run(GPS& gps, Cellular& cell) {
         return;
     }
 
-    auto resCellOpen = futCellOpen.wait(90000);
+    auto resCellOpen = futCellOpen.wait(10000);
     if (resCellOpen.has_value()) {
         Serial.println("[main] cellular connected");
     } else {
@@ -59,8 +59,17 @@ void run(GPS& gps, Cellular& cell) {
 
     auto fix = resGpsFix.value();
     char timestamp[21];
-    snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02dZ",
-        fix.year, fix.month, fix.day, fix.hour, fix.minute, fix.second);
+    snprintf(
+        timestamp, 
+        sizeof(timestamp), 
+        "%04d-%02d-%02dT%02d:%02d:%02dZ",
+        fix.year, 
+        fix.month, 
+        fix.day, 
+        fix.hour, 
+        fix.minute, 
+        fix.second
+    );
 
     String body = "{";
     body += "\"lat\":" + String(fix.lat, 6) + ",";

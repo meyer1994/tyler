@@ -33,11 +33,13 @@ public:
         return SharedFuture<bool>([this]() -> SharedFuture<bool>::Result {
             Serial.println("[gps] opening serial...");
             serial_.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+            
             Serial.println("[gps] waiting for valid location...");
             while (!gps_.location.isValid()) {
                 while (serial_.available()) gps_.encode(serial_.read());
                 vTaskDelay(pdMS_TO_TICKS(500));
             }
+
             Serial.println("[gps] location valid, satellites: " + String(gps_.satellites.value()));
             return true;
         }, "gps_open", 4096);
@@ -50,7 +52,12 @@ public:
                 while (serial_.available()) gps_.encode(serial_.read());
                 vTaskDelay(pdMS_TO_TICKS(500));
             }
-            Serial.println("[gps] fix acquired: " + String(gps_.location.lat(), 6) + ", " + String(gps_.location.lng(), 6));
+
+            Serial.println(
+                "[gps] fix acquired: " + 
+                String(gps_.location.lat(), 6) + ", " + 
+                String(gps_.location.lng(), 6));
+
             return GPSFix{
                 gps_.location.lat(),
                 gps_.location.lng(),
