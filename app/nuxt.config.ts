@@ -6,6 +6,7 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     'nitro-cloudflare-dev',
     'nuxt-maplibre',
+    'nuxt-echarts',
   ],
 
   devtools: {
@@ -45,6 +46,9 @@ export default defineNuxtConfig({
         'maplibre-gl',
         '@trpc/client',
         'better-auth/vue',
+        'zod',
+        '@vue-leaflet/vue-leaflet',
+        '@indoorequal/vue-maplibre-gl',
       ],
     },
     server: {

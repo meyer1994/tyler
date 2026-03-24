@@ -20,11 +20,6 @@ type Keys = keyof Item
 
 const columns: TableColumn<Item>[] = [
   {
-    id: 'id' as const,
-    accessorKey: 'id',
-    header: 'ID',
-  },
-  {
     id: 'boardId' as const,
     accessorKey: 'boardId',
     header: 'Board ID',
@@ -40,6 +35,36 @@ const columns: TableColumn<Item>[] = [
     header: 'Longitude',
   },
   {
+    id: 'alt' as const,
+    accessorKey: 'alt',
+    header: 'Altitude',
+  },
+  {
+    id: 'speed' as const,
+    accessorKey: 'speed',
+    header: 'Speed',
+  },
+  {
+    id: 'heading' as const,
+    accessorKey: 'heading',
+    header: 'Heading',
+  },
+  {
+    id: 'hdop' as const,
+    accessorKey: 'hdop',
+    header: 'HDOP',
+  },
+  {
+    id: 'sat' as const,
+    accessorKey: 'sat',
+    header: 'Satellites',
+  },
+  {
+    id: 'ts' as const,
+    accessorKey: 'ts',
+    header: 'Timestamp',
+  },
+  {
     id: 'createdAt' as const,
     accessorKey: 'createdAt',
     header: 'Created At',
@@ -52,10 +77,15 @@ const MAP_ID_TO_LABEL: Record<Keys, string> = columns.reduce(
 )
 
 const visible: Ref<Record<Keys, boolean>> = ref({
-  id: true,
   boardId: true,
   lat: true,
   lon: true,
+  alt: false,
+  speed: true,
+  heading: false,
+  hdop: true,
+  sat: true,
+  ts: false,
   createdAt: true,
   updatedAt: false,
 })
@@ -123,14 +153,8 @@ const table = useTemplateRef('table')
       }"
       class="flex-1"
     >
-      <template #id-cell="{ row }">
-        <span class="font-bold font-mono text-sm">
-          #{{ row.original.id.substring(0, 8) }}
-        </span>
-      </template>
-
       <template #boardId-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.boardId }}</span>
+        <span class="font-mono text-sm text-primary font-medium">{{ row.original.boardId }}</span>
       </template>
 
       <template #lat-cell="{ row }">
@@ -139,6 +163,30 @@ const table = useTemplateRef('table')
 
       <template #lon-cell="{ row }">
         <span class="font-mono text-sm">{{ row.original.lon.toFixed(6) }}</span>
+      </template>
+
+      <template #alt-cell="{ row }">
+        <span class="font-mono text-sm">{{ row.original.alt ? `${row.original.alt.toFixed(1)}m` : '—' }}</span>
+      </template>
+
+      <template #speed-cell="{ row }">
+        <span class="font-mono text-sm">{{ row.original.speed ? `${row.original.speed.toFixed(1)}km/h` : '—' }}</span>
+      </template>
+
+      <template #heading-cell="{ row }">
+        <span class="font-mono text-sm">{{ row.original.heading ? `${row.original.heading.toFixed(0)}°` : '—' }}</span>
+      </template>
+
+      <template #hdop-cell="{ row }">
+        <span class="font-mono text-sm">{{ row.original.hdop ? row.original.hdop.toFixed(2) : '—' }}</span>
+      </template>
+
+      <template #sat-cell="{ row }">
+        <span class="font-mono text-sm font-medium">{{ row.original.sat ?? '—' }}</span>
+      </template>
+
+      <template #ts-cell="{ row }">
+        <span class="font-mono text-sm">{{ row.original.ts ?? '—' }}</span>
       </template>
 
       <template #createdAt-cell="{ row }">

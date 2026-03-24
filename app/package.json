@@ -56,6 +56,7 @@
     "eslint": "^9.39.4",
     "mcp-remote": "^0.1.38",
     "nitro-cloudflare-dev": "^0.2.2",
+    "nuxt-echarts": "1.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.2.6",
