@@ -31,14 +31,8 @@ const loggedOutItems = ref<NavigationMenuItem[]>([
   {
     label: 'Sign In',
     icon: 'i-lucide-log-in',
-    description: 'Sign in to your account',
+    description: 'Sign in or create an account',
     to: '/signin',
-  },
-  {
-    label: 'Sign Up',
-    icon: 'i-lucide-user-plus',
-    description: 'Create a new account',
-    to: '/signup',
   },
 ])
 
