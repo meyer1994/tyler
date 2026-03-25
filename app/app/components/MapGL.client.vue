@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { AppRouterOutputs } from '~~/server/trpc'
+import { ref } from 'vue'
 
 type Response = AppRouterOutputs['events']['list']
 defineProps<{ data: Response }>()
+
+const drawnFeatures = ref<GeoJSON.Feature[]>([])
 
 const toFeatureCollection = (data?: Response): GeoJSON.FeatureCollection => {
   if (!data) return { type: 'FeatureCollection', features: [] }
@@ -36,6 +39,8 @@ const toFeatureCollection = (data?: Response): GeoJSON.FeatureCollection => {
     :zoom="10"
     :map-style="'https://tiles.openfreemap.org/styles/liberty'"
   >
+    <MglDrawControl v-model:features="drawnFeatures" />
+
     <MglGeoJsonSource
       source-id="events-geojson-source"
       :data="toFeatureCollection(data)"
