@@ -32,7 +32,7 @@ const toFeatureCollection = (data?: Response): GeoJSON.FeatureCollection => {
   <MglMap
     width="100%"
     height="100%"
-    :center="[-48.5011, -27.5949]"
+    :center="[-51.2300, -30.0346]"
     :zoom="10"
     :map-style="'https://tiles.openfreemap.org/styles/liberty'"
   >

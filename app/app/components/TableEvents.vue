@@ -11,10 +11,7 @@ type Props = {
 }
 
 const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  'refresh-table': []
-}>()
+const emit = defineEmits<{ refresh: [] }>()
 
 type Keys = keyof Item
 
@@ -77,6 +74,7 @@ const MAP_ID_TO_LABEL: Record<Keys, string> = columns.reduce(
 )
 
 const visible: Ref<Record<Keys, boolean>> = ref({
+  id: false,
   boardId: true,
   lat: true,
   lon: true,
@@ -96,7 +94,16 @@ const table = useTemplateRef('table')
 <template>
   <div class="flex flex-col flex-1 w-full">
     <div class="flex items-center gap-2 py-3.5 border-b border-accented">
-      <slot name="top" />
+      <div class="text-sm text-gray-500">
+        Last item @
+        <NuxtTime
+          v-if="props.items[0]?.createdAt"
+          :datetime="props.items[0]?.createdAt"
+          title
+          relative
+        />
+        <span v-else>—</span>
+      </div>
 
       <UButton
         icon="i-lucide-refresh-cw"
@@ -104,7 +111,7 @@ const table = useTemplateRef('table')
         variant="ghost"
         size="sm"
         class="ml-auto"
-        @click="emit('refresh-table')"
+        @click="emit('refresh')"
       />
 
       <UDropdownMenu
@@ -154,39 +161,57 @@ const table = useTemplateRef('table')
       class="flex-1"
     >
       <template #boardId-cell="{ row }">
-        <span class="font-mono text-sm text-primary font-medium">{{ row.original.boardId }}</span>
+        <span class="font-mono text-sm text-primary font-medium">
+          {{ row.original.boardId }}
+        </span>
       </template>
 
       <template #lat-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.lat.toFixed(6) }}</span>
+        <span class="font-mono text-sm">
+          {{ row.original.lat.toFixed(6) }}
+        </span>
       </template>
 
       <template #lon-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.lon.toFixed(6) }}</span>
+        <span class="font-mono text-sm">
+          {{ row.original.lon.toFixed(6) }}
+        </span>
       </template>
 
       <template #alt-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.alt ? `${row.original.alt.toFixed(1)}m` : '—' }}</span>
+        <span class="font-mono text-sm">
+          {{ row.original.alt ? `${row.original.alt.toFixed(1)}m` : '—' }}
+        </span>
       </template>
 
       <template #speed-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.speed ? `${row.original.speed.toFixed(1)}km/h` : '—' }}</span>
+        <span class="font-mono text-sm">
+          {{ row.original.speed ? `${row.original.speed.toFixed(1)}km/h` : '—' }}
+        </span>
       </template>
 
       <template #heading-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.heading ? `${row.original.heading.toFixed(0)}°` : '—' }}</span>
+        <span class="font-mono text-sm">
+          {{ row.original.heading ? `${row.original.heading.toFixed(0)}°` : '—' }}
+        </span>
       </template>
 
       <template #hdop-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.hdop ? row.original.hdop.toFixed(2) : '—' }}</span>
+        <span class="font-mono text-sm">
+          {{ row.original.hdop ? row.original.hdop.toFixed(2) : '—' }}
+        </span>
       </template>
 
       <template #sat-cell="{ row }">
-        <span class="font-mono text-sm font-medium">{{ row.original.sat ?? '—' }}</span>
+        <span class="font-mono text-sm font-medium">
+          {{ row.original.sat ?? '—' }}
+        </span>
       </template>
 
       <template #ts-cell="{ row }">
-        <span class="font-mono text-sm">{{ row.original.ts ?? '—' }}</span>
+        <span class="font-mono text-sm">
+          {{ row.original.ts ?? '—' }}
+        </span>
       </template>
 
       <template #createdAt-cell="{ row }">
