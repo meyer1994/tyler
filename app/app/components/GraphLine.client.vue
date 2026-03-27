@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { EChartsOption } from 'echarts'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TitleComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
@@ -17,7 +16,7 @@ use([
   CanvasRenderer,
 ])
 
-const options = computed<EChartsOption>(() => ({
+const options = computed<ECOption>(() => ({
   grid: {
     top: 10, // Minimal spacing at top
     bottom: 20, // Small space for X-axis labels

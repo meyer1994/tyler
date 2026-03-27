@@ -64,6 +64,11 @@ export default defineNuxtConfig({
     strict: true,
   },
 
+  echarts: {
+    charts: ['LineChart'],
+    components: ['GridComponent', 'TitleComponent', 'TooltipComponent'],
+  },
+
   eslint: {
     checker: true,
     config: { stylistic: true },
