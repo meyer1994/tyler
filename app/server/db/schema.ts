@@ -1,5 +1,5 @@
 import type { SQL } from 'drizzle-orm'
-import { sql } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   customType,
   geometry,
@@ -50,6 +50,7 @@ export const events = pgTable('events',
     ts: timestamp('ts', { withTimezone: true }),
 
     point: geometry('point', { type: 'point', mode: 'xy', srid: 4326 })
+      .notNull()
       .generatedAlwaysAs((): SQL => sql`ST_SetSRID(ST_MakePoint(${events.lon}, ${events.lat}), 4326)`),
 
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -63,7 +64,9 @@ export const events = pgTable('events',
   table => [
     index('events_board_id_idx').on(table.boardId),
     index('events_created_at_idx').on(table.createdAt),
+    index('events_updated_at_idx').on(table.updatedAt),
     index('events_lat_lon_idx').on(table.lat, table.lon),
+    index('events_lon_lat_idx').on(table.lon, table.lat),
     index('events_point_idx').using('gist', table.point),
   ],
 )
@@ -86,6 +89,56 @@ export const fences = pgTable('fences',
       .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
   },
   table => [
+    index('fences_created_at_idx').on(table.createdAt),
+    index('fences_updated_at_idx').on(table.updatedAt),
     index('fences_polygon_idx').using('gist', table.polygon),
   ],
 )
+
+export const relFencesEvents = pgTable('rel_fences_events',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+
+    fenceId: text('fence_id')
+      .references(() => fences.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    eventId: text('event_id')
+      .references(() => events.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+  },
+  table => [
+    index('fences_events_fence_id_idx').on(table.fenceId),
+    index('fences_events_event_id_idx').on(table.eventId),
+    index('fences_events_fence_id_event_id_idx').on(table.fenceId, table.eventId),
+    index('fences_events_event_id_fence_id_idx').on(table.eventId, table.fenceId),
+    index('fences_events_created_at_idx').on(table.createdAt),
+    index('fences_events_updated_at_idx').on(table.updatedAt),
+  ],
+)
+
+export const fencesRelations = relations(fences, ({ many }) => ({
+  events: many(relFencesEvents),
+}))
+
+export const eventsRelations = relations(events, ({ many }) => ({
+  fences: many(relFencesEvents),
+}))
+
+export const fencesEventsRelations = relations(relFencesEvents, ({ one }) => ({
+  fence: one(fences, {
+    fields: [relFencesEvents.fenceId],
+    references: [fences.id],
+  }),
+  event: one(events, {
+    fields: [relFencesEvents.eventId],
+    references: [events.id],
+  }),
+}))

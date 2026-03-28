@@ -22,6 +22,41 @@
       "when": 1774709114655,
       "tag": "0002_unique_omega_red",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774726924898,
+      "tag": "0003_sudden_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774727891734,
+      "tag": "0004_goofy_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774728039156,
+      "tag": "0005_fast_william_stryker",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774728165337,
+      "tag": "0006_wise_loa",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774728340968,
+      "tag": "0007_sloppy_microchip",
+      "breakpoints": true
     }
   ]
 }

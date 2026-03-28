@@ -1,0 +1,1 @@
+ALTER TABLE "events" ALTER COLUMN "point" SET NOT NULL;
