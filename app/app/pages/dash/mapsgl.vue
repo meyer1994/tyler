@@ -3,7 +3,7 @@
 
 <template>
   <AsyncFetch
-    v-slot="{ data: eventsData, refresh: eventsRefresh }"
+    v-slot="{ data: eventsData }"
     fetch-key="events"
     :handler="async () => await $trpc.events.list.query()"
   >
@@ -12,15 +12,6 @@
       fetch-key="polygons"
       :handler="async () => await $trpc.fences.list.query()"
     >
-      <UButton
-        @click="() => {
-          eventsRefresh()
-          polygonsRefresh()
-        }"
-      >
-        Refresh
-      </UButton>
-
       <MapGL
         class="h-full w-full"
         :events="eventsData"

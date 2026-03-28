@@ -5,8 +5,12 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { AppRouterOutputs } from '~~/server/trpc'
 
-type Item = AppRouterOutputs['events']['list'][number]
-const props = defineProps<{ items: Item[] }>()
+type Item = AppRouterOutputs['events']['list']
+type Props = { item?: Item }
+
+const props = withDefaults(defineProps<Props>(), {
+  item: () => ({ type: 'FeatureCollection', features: [] }),
+})
 
 use([
   LineChart,
@@ -54,7 +58,7 @@ const options = computed<ECOption>(() => ({
       smooth: true,
       symbol: 'none',
       yAxisIndex: 0,
-      data: props.items.map(i => [i.createdAt, i.hdop]),
+      data: props.item.features.map(i => [i.properties.createdAt, i.properties.hdop]),
     },
     {
       name: 'Satellites',
@@ -62,7 +66,7 @@ const options = computed<ECOption>(() => ({
       smooth: true,
       symbol: 'none',
       yAxisIndex: 1,
-      data: props.items.map(i => [i.createdAt, i.sat]),
+      data: props.item.features.map(i => [i.properties.createdAt, i.properties.sat]),
     },
   ],
 }))

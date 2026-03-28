@@ -2,69 +2,71 @@
 import type { AppRouterOutputs } from '@@/server/trpc'
 import type { TableColumn } from '@nuxt/ui'
 
-type Item = AppRouterOutputs['events']['list'][number]
+type Item = AppRouterOutputs['events']['list']
+type Props = { item?: Item, filter?: string, loading?: boolean }
+const props = withDefaults(defineProps<Props>(), {
+  item: () => ({ type: 'FeatureCollection', features: [] }),
+})
 
-type Props = {
-  items: Item[]
-  filter?: string
-  loading?: boolean
-}
-
-const props = defineProps<Props>()
 const emit = defineEmits<{ refresh: [] }>()
 
-type Keys = keyof Item
+type Keys = keyof Item['features'][number]['properties']
 
 const columns: TableColumn<Item>[] = [
   {
     id: 'boardId' as const,
-    accessorKey: 'boardId',
+    accessorKey: 'properties.boardId',
     header: 'Board ID',
   },
   {
     id: 'lat' as const,
-    accessorKey: 'lat',
+    accessorKey: 'properties.lat',
     header: 'Latitude',
   },
   {
     id: 'lon' as const,
-    accessorKey: 'lon',
+    accessorKey: 'properties.lon',
     header: 'Longitude',
   },
   {
     id: 'alt' as const,
-    accessorKey: 'alt',
+    accessorKey: 'properties.alt',
     header: 'Altitude',
   },
   {
     id: 'speed' as const,
-    accessorKey: 'speed',
+    accessorKey: 'properties.speed',
     header: 'Speed',
   },
   {
     id: 'heading' as const,
-    accessorKey: 'heading',
+    accessorKey: 'properties.heading',
     header: 'Heading',
   },
   {
     id: 'hdop' as const,
-    accessorKey: 'hdop',
+    accessorKey: 'properties.hdop',
     header: 'HDOP',
   },
   {
     id: 'sat' as const,
-    accessorKey: 'sat',
+    accessorKey: 'properties.sat',
     header: 'Satellites',
   },
   {
     id: 'ts' as const,
-    accessorKey: 'ts',
+    accessorKey: 'properties.ts',
     header: 'Timestamp',
   },
   {
     id: 'createdAt' as const,
-    accessorKey: 'createdAt',
+    accessorKey: 'properties.createdAt',
     header: 'Created At',
+  },
+  {
+    id: 'updatedAt' as const,
+    accessorKey: 'properties.updatedAt',
+    header: 'Updated At',
   },
 ]
 
@@ -97,8 +99,8 @@ const table = useTemplateRef('table')
       <div class="text-sm text-gray-500">
         Last item @
         <NuxtTime
-          v-if="props.items[0]?.createdAt"
-          :datetime="props.items[0]?.createdAt"
+          v-if="props.item.features[0]?.properties.createdAt"
+          :datetime="props.item.features[0]?.properties.createdAt"
           title
           relative
         />
@@ -149,7 +151,7 @@ const table = useTemplateRef('table')
       :filter="props.filter"
       :global-filter="filter"
       :columns="columns"
-      :data="props.items"
+      :data="props.item.features"
       :sticky="true"
       :empty-state="{
         icon: 'i-lucide-map-pin-off',
@@ -162,61 +164,68 @@ const table = useTemplateRef('table')
     >
       <template #boardId-cell="{ row }">
         <span class="font-mono text-sm text-primary font-medium">
-          {{ row.original.boardId }}
+          {{ row.original.properties.boardId ?? '-' }}
         </span>
       </template>
 
       <template #lat-cell="{ row }">
         <span class="font-mono text-sm">
-          {{ row.original.lat.toFixed(6) }}
+          {{ row.original.properties.lat.toFixed(6) ?? '-' }}
         </span>
       </template>
 
       <template #lon-cell="{ row }">
         <span class="font-mono text-sm">
-          {{ row.original.lon.toFixed(6) }}
+          {{ row.original.properties.lon.toFixed(6) ?? '-' }}
         </span>
       </template>
 
       <template #alt-cell="{ row }">
         <span class="font-mono text-sm">
-          {{ row.original.alt ? `${row.original.alt.toFixed(1)}m` : '—' }}
+          {{ row.original.properties.alt?.toFixed(1) ?? '-' }}
         </span>
       </template>
 
       <template #speed-cell="{ row }">
         <span class="font-mono text-sm">
-          {{ row.original.speed ? `${row.original.speed.toFixed(1)}km/h` : '—' }}
+          {{ row.original.properties.speed?.toFixed(1) ?? '-' }}
         </span>
       </template>
 
       <template #heading-cell="{ row }">
         <span class="font-mono text-sm">
-          {{ row.original.heading ? `${row.original.heading.toFixed(0)}°` : '—' }}
+          {{ row.original.properties.heading?.toFixed(0) ?? '-' }}
         </span>
       </template>
 
       <template #hdop-cell="{ row }">
         <span class="font-mono text-sm">
-          {{ row.original.hdop ? row.original.hdop.toFixed(2) : '—' }}
+          {{ row.original.properties.hdop?.toFixed(2) ?? '-' }}
         </span>
       </template>
 
       <template #sat-cell="{ row }">
         <span class="font-mono text-sm font-medium">
-          {{ row.original.sat ?? '—' }}
+          {{ row.original.properties.sat ?? '-' }}
         </span>
       </template>
 
       <template #ts-cell="{ row }">
         <span class="font-mono text-sm">
-          {{ row.original.ts ?? '—' }}
+          {{ row.original.properties.ts ?? '-' }}
         </span>
       </template>
 
       <template #createdAt-cell="{ row }">
         <NuxtTime
-          :datetime="row.original.createdAt"
+          :datetime="row.original.properties.createdAt"
+          title
+        />
+      </template>
+
+      <template #updatedAt-cell="{ row }">
+        <NuxtTime
+          :datetime="row.original.properties.updatedAt"
           title
         />
       </template>
