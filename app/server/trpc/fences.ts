@@ -1,6 +1,6 @@
-import { desc, eq, sql } from 'drizzle-orm'
+import { countDistinct, desc, eq } from 'drizzle-orm'
 import z from 'zod'
-import { fences } from '~~/server/db/schema'
+import { fences, relFencesEvents } from '~~/server/db/schema'
 import { createTRPCRouter, protectedProcedure } from '../lib/trpc'
 
 export const fencesRouter = createTRPCRouter({
@@ -9,21 +9,36 @@ export const fencesRouter = createTRPCRouter({
       const data = await ctx.db
         .select({
           id: fences.id,
-          type: sql`'Feature'`,
-          geometry: fences.polygon,
-          properties: sql`json_build_object(
-            'id', ${fences.id}, 
-            'createdAt', ${fences.createdAt}, 
-            'updatedAt', ${fences.updatedAt})
-          `,
+          polygon: fences.polygon,
+          area: fences.area,
+          createdAt: fences.createdAt,
+          updatedAt: fences.updatedAt,
+          eventsCount: countDistinct(relFencesEvents.eventId),
         })
         .from(fences)
+        .leftJoin(relFencesEvents, eq(fences.id, relFencesEvents.fenceId))
+        .groupBy(fences.id)
         .orderBy(desc(fences.createdAt))
-        .execute()
 
-      type Props = { id: string, createdAt: string, updatedAt: string }
-      type Coll = GeoJSON.FeatureCollection<GeoJSON.Polygon, Props>
-      return { type: 'FeatureCollection', features: data } as Coll
+      type Properties = Omit<typeof data[number], 'polygon'>
+
+      const features: GeoJSON.FeatureCollection<GeoJSON.Polygon, Properties> = {
+        type: 'FeatureCollection',
+        features: data.map(f => ({
+          id: f.id,
+          type: 'Feature',
+          geometry: f.polygon,
+          properties: {
+            id: f.id,
+            area: f.area,
+            createdAt: f.createdAt,
+            updatedAt: f.updatedAt,
+            eventsCount: f.eventsCount,
+          },
+        })),
+      }
+
+      return features
     }),
 
   create: protectedProcedure
@@ -35,24 +50,9 @@ export const fencesRouter = createTRPCRouter({
       }),
     }))
     .mutation(async ({ ctx, input }) => {
-      const [data] = await ctx.db
+      await ctx.db
         .insert(fences)
         .values({ polygon: input.geometry })
-        .returning({
-          id: fences.id,
-          type: sql`'Feature'`,
-          geometry: fences.polygon,
-          properties: sql`json_build_object(
-            'id', ${fences.id}, 
-            'createdAt', ${fences.createdAt}, 
-            'updatedAt', ${fences.updatedAt})
-          `,
-        })
-
-      if (!data) throw createError({ statusCode: 400 })
-
-      type Props = { id: string, createdAt: string, updatedAt: string }
-      return data as GeoJSON.Feature<GeoJSON.Polygon, Props>
     }),
 
   update: protectedProcedure
@@ -65,47 +65,17 @@ export const fencesRouter = createTRPCRouter({
       }),
     }))
     .mutation(async ({ ctx, input }) => {
-      const [data] = await ctx.db
+      await ctx.db
         .update(fences)
         .set({ polygon: input.geometry })
         .where(eq(fences.id, input.id))
-        .returning({
-          id: fences.id,
-          type: sql`'Feature'`,
-          geometry: fences.polygon,
-          properties: sql`json_build_object(
-            'id', ${fences.id}, 
-            'createdAt', ${fences.createdAt}, 
-            'updatedAt', ${fences.updatedAt})
-          `,
-        })
-
-      if (!data) throw createError({ statusCode: 400 })
-
-      type Props = { id: string, createdAt: string, updatedAt: string }
-      return data as GeoJSON.Feature<GeoJSON.Polygon, Props>
     }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const [data] = await ctx.db
+      await ctx.db
         .delete(fences)
         .where(eq(fences.id, input.id))
-        .returning({
-          id: fences.id,
-          type: sql`'Feature'`,
-          geometry: fences.polygon,
-          properties: sql`json_build_object(
-            'id', ${fences.id}, 
-            'createdAt', ${fences.createdAt}, 
-            'updatedAt', ${fences.updatedAt})
-          `,
-        })
-
-      if (!data) throw createError({ statusCode: 400 })
-
-      type Props = { id: string, createdAt: string, updatedAt: string }
-      return data as GeoJSON.Feature<GeoJSON.Polygon, Props>
     }),
 })

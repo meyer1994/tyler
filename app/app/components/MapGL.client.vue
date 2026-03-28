@@ -1,4 +1,6 @@
 <script setup lang="ts" generic="T extends GeoJSON.GeoJsonProperties">
+import { useMap } from '@indoorequal/vue-maplibre-gl'
+
 type Props = {
   zoom?: number
   center?: [number, number]
@@ -23,6 +25,19 @@ const emits = defineEmits<{
 }>()
 
 const hovered = ref<GeoJSON.Feature<GeoJSON.Point, Event> | null>(null)
+
+// Fit the map to the events when the map is loaded
+const map = useMap()
+watch(
+  () => map.isLoaded,
+  async (loaded) => {
+    const { bbox } = await import('@turf/turf')
+    if (!loaded) return
+    if (!map.map) return
+    const [minX, minY, maxX, maxY] = bbox(props.events)
+    map.map.fitBounds([minX - 0.001, minY - 0.001, maxX + 0.001, maxY + 0.001], { animate: false })
+  },
+)
 </script>
 
 <template>

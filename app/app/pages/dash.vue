@@ -17,6 +17,11 @@ const navItems: NavigationMenuItem[] = [
     to: '/dash/events',
   },
   {
+    label: 'Fences',
+    icon: 'i-lucide-fence',
+    to: '/dash/fences',
+  },
+  {
     label: 'MapPoints',
     icon: 'i-lucide-map-pin',
     to: '/dash/mapsgl',

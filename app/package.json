@@ -24,6 +24,7 @@
     "@nuxt/ui": "^4.6.0",
     "@trpc/client": "^11.16.0",
     "@trpc/server": "^11.16.0",
+    "@turf/turf": "^7.3.4",
     "@vue-leaflet/vue-leaflet": "^0.10.1",
     "@vueuse/components": "^14.2.1",
     "@vueuse/core": "^14.2.1",

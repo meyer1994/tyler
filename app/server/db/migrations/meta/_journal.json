@@ -57,6 +57,13 @@
       "when": 1774728340968,
       "tag": "0007_sloppy_microchip",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774728731326,
+      "tag": "0008_cooing_starbolt",
+      "breakpoints": true
     }
   ]
 }

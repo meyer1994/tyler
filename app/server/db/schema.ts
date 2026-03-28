@@ -79,6 +79,9 @@ export const fences = pgTable('fences',
 
     polygon: polygon('polygon')
       .notNull(),
+    area: real('area')
+      .notNull()
+      .generatedAlwaysAs((): SQL => sql`ST_Area(${fences.polygon}, true)`),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
