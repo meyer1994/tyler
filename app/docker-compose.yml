@@ -7,20 +7,10 @@ services:
       - 3000:3000
     env_file:
       - .env
-    depends_on:
-      - minio
 
-  minio:
-    image: minio/minio:latest
+  postgres:
+    image: postgis/postgis:18-3.6-alpine
     ports:
-      - 9000:9000
-      - 9001:9001
+      - 5432:5432
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    entrypoint:
-      [
-        "/bin/sh",
-        "-c",
-        "mkdir -p /data/flower && minio server /data --console-address ':9001'",
-      ]
+      POSTGRES_HOST_AUTH_METHOD: trust
