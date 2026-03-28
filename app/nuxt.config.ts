@@ -27,15 +27,10 @@ export default defineNuxtConfig({
     transpile: ['trpc-nuxt', 'leaflet'],
   },
 
-  compatibilityDate: '2026-03-16',
+  compatibilityDate: '2026-03-28',
 
   nitro: {
-    preset: 'cloudflare_module',
-
-    cloudflare: {
-      deployConfig: true,
-      nodeCompat: true,
-    },
+    preset: 'node-server',
   },
 
   vite: {
