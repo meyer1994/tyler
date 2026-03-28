@@ -1,16 +1,18 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends GeoJSON.GeoJsonProperties">
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TitleComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import type { AppRouterOutputs } from '~~/server/trpc'
 
-type Item = AppRouterOutputs['events']['list']
-type Props = { item?: Item }
+type Props = {
+  data: GeoJSON.FeatureCollection<GeoJSON.Point, T>
+  getterTs: (feature: GeoJSON.Feature<GeoJSON.Point, T>) => number | string
+  getterVal: (feature: GeoJSON.Feature<GeoJSON.Point, T>) => number
+  seriesName: string
+  yAxisName: string
+}
 
-const props = withDefaults(defineProps<Props>(), {
-  item: () => ({ type: 'FeatureCollection', features: [] }),
-})
+const props = defineProps<Props>()
 
 use([
   LineChart,
@@ -37,36 +39,18 @@ const options = computed<ECOption>(() => ({
   xAxis: {
     type: 'time',
   },
-  yAxis: [
-    {
-      type: 'value',
-      name: 'HDOP',
-      position: 'left',
-      splitLine: { show: false },
-    },
-    {
-      type: 'value',
-      name: 'Satellites',
-      position: 'right',
-      splitLine: { show: false },
-    },
-  ],
+  yAxis: {
+    type: 'value',
+    name: props.yAxisName,
+    position: 'left',
+    splitLine: { show: false },
+  },
   series: [
     {
-      name: 'HDOP',
+      name: props.seriesName,
       type: 'line',
-      smooth: true,
       symbol: 'none',
-      yAxisIndex: 0,
-      data: props.item.features.map(i => [i.properties.createdAt, i.properties.hdop]),
-    },
-    {
-      name: 'Satellites',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      data: props.item.features.map(i => [i.properties.createdAt, i.properties.sat]),
+      data: props.data.features.map(i => [props.getterTs(i), props.getterVal(i)]),
     },
   ],
 }))

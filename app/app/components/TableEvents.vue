@@ -80,7 +80,7 @@ const visible: Ref<Record<Keys, boolean>> = ref({
   boardId: true,
   lat: true,
   lon: true,
-  alt: false,
+  alt: true,
   speed: true,
   heading: false,
   hdop: true,
