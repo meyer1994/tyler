@@ -20,8 +20,9 @@ export const events = pgTable('events',
     boardId: text('board_id')
       .notNull(),
 
-    lat: real('lat'),
-    lon: real('lon'),
+    lat: real('lat').notNull(),
+    lon: real('lon').notNull(),
+
     alt: real('alt'),
     speed: real('speed'),
     heading: real('heading'),

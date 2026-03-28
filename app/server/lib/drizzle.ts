@@ -1,17 +1,11 @@
 import type { H3Event } from 'h3'
 
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle } from 'drizzle-orm/node-postgres'
 import * as schema from '../db/schema'
 
+let db: ReturnType<typeof drizzle> | null = null
+
 export const serverDrizzle = (event: H3Event) => {
-  const db = event.context.cloudflare.env.DB as D1Database
-  return drizzle(db, {
-    schema,
-    logger: {
-      logQuery: (query, params) => {
-        if (!import.meta.dev) return
-        console.info(`[server.drizzle] query ${query} with params ${params}`)
-      },
-    },
-  })
+  if (!db) db = drizzle(process.env.DATABASE_URL!, { schema })
+  return db
 }

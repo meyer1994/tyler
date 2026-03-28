@@ -1,5 +1,5 @@
 {
-  "id": "b46e5dbb-8072-4969-a128-6a525076e228",
+  "id": "8470e1f1-3051-4595-95da-3dfb10a14f5b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -24,13 +24,13 @@
           "name": "lat",
           "type": "real",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "lon": {
           "name": "lon",
           "type": "real",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "alt": {
           "name": "alt",

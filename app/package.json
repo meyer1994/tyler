@@ -14,14 +14,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "auth:generate": "dotenv -e .env -- better-auth generate --config auth.config.ts --output server/db/auth.ts -y && eslint --fix server/db/auth.ts",
-    "db:generate": "dotenv -e .env drizzle-kit generate",
-    "db:migrate": "pnpm run cf:migrate",
-    "cf:deploy": "wrangler --cwd .output deploy",
-    "cf:types": "wrangler types shared/wrangler.d.ts && eslint --fix shared/wrangler.d.ts",
-    "cf:migrate": "wrangler d1 migrations apply trackows",
-    "cf:dump": "wrangler d1 export trackows --output .data/dump.sqlite",
-    "cf:import": "wrangler d1 execute trackows --file .data/dump.sqlite",
-    "cf:secrets": "wrangler secret bulk .env"
+    "db:generate": "dotenv -e .env -- drizzle-kit generate",
+    "db:migrate": "dotenv -e .env -- drizzle-kit migrate"
   },
   "dependencies": {
     "@indoorequal/vue-maplibre-gl": "^8.4.2",
@@ -41,6 +35,7 @@
     "maplibre-gl": "^5.21.1",
     "nuxt": "^4.4.2",
     "nuxt-maplibre": "1.2.2",
+    "pg": "^8.20.0",
     "trpc-nuxt": "^2.0.2",
     "vue": "^3.5.31",
     "vue-router": "^5.0.4",
@@ -55,15 +50,14 @@
     "@types/leaflet": "^1.9.21",
     "@types/mapbox__mapbox-gl-draw": "^1.4.9",
     "@types/node": "^25.5.0",
+    "@types/pg": "^8.20.0",
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.1.0",
     "mcp-remote": "^0.1.38",
-    "nitro-cloudflare-dev": "^0.2.2",
     "nuxt-echarts": "1.0.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "vue-tsc": "^3.2.6",
-    "wrangler": "^4.77.0"
+    "vue-tsc": "^3.2.6"
   }
 }

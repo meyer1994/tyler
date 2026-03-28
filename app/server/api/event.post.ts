@@ -5,12 +5,12 @@ import { serverDrizzle } from '../lib/drizzle'
 const query = z.object({
   lat: z.number(),
   lon: z.number(),
-  alt: z.number().optional(),
-  speed: z.number().optional(),
-  heading: z.number().optional(),
-  hdop: z.number().optional(),
-  sat: z.number().optional(),
-  ts: z.string().optional(),
+  alt: z.number().nullish(),
+  sat: z.number().nullish(),
+  hdop: z.number().nullish(),
+  speed: z.number().nullish(),
+  heading: z.number().nullish(),
+  ts: z.iso.datetime().nullish(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
       heading: body.heading,
       hdop: body.hdop,
       sat: body.sat,
-      ts: body.ts,
+      ts: body.ts ? new Date(body.ts) : null,
       boardId: 'BOARD',
     })
   }

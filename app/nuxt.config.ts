@@ -4,7 +4,6 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@vueuse/nuxt',
     '@nuxt/ui',
-    'nitro-cloudflare-dev',
     'nuxt-maplibre',
     'nuxt-echarts',
   ],
@@ -42,13 +41,14 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
+        '@indoorequal/vue-maplibre-gl',
+        '@mapbox/mapbox-gl-draw',
+        '@trpc/client',
+        '@vue-leaflet/vue-leaflet',
+        'better-auth/vue',
         'leaflet',
         'maplibre-gl',
-        '@trpc/client',
-        'better-auth/vue',
         'zod',
-        '@vue-leaflet/vue-leaflet',
-        '@indoorequal/vue-maplibre-gl',
       ],
     },
     server: {

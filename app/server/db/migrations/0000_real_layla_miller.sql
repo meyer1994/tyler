@@ -1,8 +1,8 @@
 CREATE TABLE "events" (
 	"id" text PRIMARY KEY NOT NULL,
 	"board_id" text NOT NULL,
-	"lat" real,
-	"lon" real,
+	"lat" real NOT NULL,
+	"lon" real NOT NULL,
 	"alt" real,
 	"speed" real,
 	"heading" real,
