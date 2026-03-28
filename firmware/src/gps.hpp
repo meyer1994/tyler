@@ -3,6 +3,7 @@
 #pragma once
 
 #include <TinyGPSPlus.h>
+#include <ArduinoJson.h>
 #include "./future.hpp"
 
 #define GPS_RX_PIN  22
@@ -23,6 +24,36 @@ struct GPSFix {
     uint8_t  hour;
     uint8_t  minute;
     uint8_t  second;
+
+    String toJson() const {
+        char timestamp[21] = {0};
+        snprintf(
+            timestamp,
+            sizeof(timestamp),
+            "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second
+        );
+
+        JsonDocument doc;
+        doc["lat"] = lat;
+        doc["lon"] = lng;
+        doc["alt"] = altitude;
+        doc["speed"] = speed;
+        doc["heading"] = heading;
+        doc["hdop"] = hdop;
+        doc["sat"] = satellites;
+        doc["ts"] = timestamp;
+
+        String payload;
+        serializeJson(doc, payload);
+
+        return payload;
+    }
 };
 
 class GPS {
@@ -33,7 +64,7 @@ public:
         return SharedFuture<bool>([this]() -> SharedFuture<bool>::Result {
             Serial.println("[gps] opening serial...");
             serial_.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-            
+
             Serial.println("[gps] waiting for valid location...");
             while (!gps_.location.isValid()) {
                 while (serial_.available()) gps_.encode(serial_.read());
@@ -54,8 +85,8 @@ public:
             }
 
             Serial.println(
-                "[gps] fix acquired: " + 
-                String(gps_.location.lat(), 6) + ", " + 
+                "[gps] fix acquired: " +
+                String(gps_.location.lat(), 6) + ", " +
                 String(gps_.location.lng(), 6));
 
             return GPSFix{

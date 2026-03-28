@@ -4,6 +4,7 @@
 
 #include <TinyGsmClient.h>
 #include <ArduinoHttpClient.h>
+#include <ArduinoJson.h>
 #include <string>
 #include "./future.hpp"
 
@@ -25,6 +26,11 @@
 #define MODEM_RESET_LEVEL                   HIGH
 #define SerialAT                            Serial2
 
+struct HttpResponse {
+    uint16_t code;
+    JsonDocument body;
+};
+
 class Cellular {
 public:
     Cellular() {}
@@ -36,10 +42,10 @@ public:
         return addr;
     }
 
-    SharedFuture<int> post(const String& host, int port,
+    SharedFuture<HttpResponse> post(const String& host, int port,
                            const String& path, const String& body) {
         auto modem = modem_;
-        return SharedFuture<int>([modem, host, port, path, body]() -> SharedFuture<int>::Result {
+        return SharedFuture<HttpResponse>([modem, host, port, path, body]() -> SharedFuture<HttpResponse>::Result {
             if (!modem) return tl::make_unexpected(Error("not initialized"));
 
             TinyGsmClient client(*modem);
@@ -47,12 +53,24 @@ public:
 
             Serial.println("[cell] POST " + host + ":" + String(port) + path);
             http.post(path, "application/json", body);
-            int code = http.responseStatusCode();
+
+            uint16_t code = http.responseStatusCode();
             http.skipResponseHeaders();
-            Serial.println("[cell] response: " + http.responseBody());
+            String body = http.responseBody();
+
+            Serial.println("[cell] response: " + body);
             http.stop();
 
-            if (code >= 0) return code;
+            HttpResponse response;
+            response.code = code;
+
+            DeserializationError error = deserializeJson(response.body, body);
+            if (error) {
+                Serial.println("[cell] JSON parse error: " + String(error.c_str()));
+                return tl::make_unexpected(Error("JSON parse error: " + String(error.c_str())));
+            }
+
+            if (code >= 0) return response;
             return tl::make_unexpected(Error("HTTP error: " + String(code)));
         }, "cell_post", 16384);
     }

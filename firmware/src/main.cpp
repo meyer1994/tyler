@@ -22,6 +22,7 @@
 #error "CELLULAR_APN is not defined"
 #endif
 
+
 void run(GPS& gps, Cellular& cell) {
     auto futGpsOpen = gps.open();
     auto futCellOpen = cell.open(CELLULAR_APN);
@@ -34,7 +35,7 @@ void run(GPS& gps, Cellular& cell) {
         return;
     }
 
-    auto resCellOpen = futCellOpen.wait(10000);
+    auto resCellOpen = futCellOpen.wait(60000);
     if (resCellOpen.has_value()) {
         Serial.println("[main] cellular connected");
     } else {
@@ -58,34 +59,13 @@ void run(GPS& gps, Cellular& cell) {
     }
 
     auto fix = resGpsFix.value();
-    char timestamp[21];
-    snprintf(
-        timestamp, 
-        sizeof(timestamp), 
-        "%04d-%02d-%02dT%02d:%02d:%02dZ",
-        fix.year, 
-        fix.month, 
-        fix.day, 
-        fix.hour, 
-        fix.minute, 
-        fix.second
-    );
-
-    String body = "{";
-    body += "\"lat\":" + String(fix.lat, 6) + ",";
-    body += "\"lon\":" + String(fix.lng, 6) + ",";
-    body += "\"alt\":" + String(fix.altitude, 2) + ",";
-    body += "\"speed\":" + String(fix.speed, 1) + ",";
-    body += "\"heading\":" + String(fix.heading, 1) + ",";
-    body += "\"hdop\":" + String(fix.hdop, 1) + ",";
-    body += "\"sat\":" + String(fix.satellites) + ",";
-    body += "\"ts\":\"" + String(timestamp) + "\"";
-    body += "}";
+    String body = fix.toJson();
     Serial.println("[main] body: " + body);
 
     auto res = cell.post(SERVER_HOST, SERVER_PORT, SERVER_PATH, body).wait(10000);
     if (res.has_value()) {
-        Serial.println("[main] POST " + String(res.value()));
+        auto response = res.value();
+        Serial.println("[main] POST " + String(response.code));
     } else {
         Serial.println("[main] POST failed: " + res.error().message);
     }
@@ -94,6 +74,8 @@ void run(GPS& gps, Cellular& cell) {
 void setup() {
     Serial.begin(115200);
     Serial.println("[main] starting up...");
+
+    delay(2000);
     esp_task_wdt_deinit();
 
     GPS gps;
@@ -102,7 +84,7 @@ void setup() {
     run(gps, cell);
 
     Serial.println("[main] sleeping for 60s...");
-    esp_sleep_enable_timer_wakeup(60ULL * 1000000ULL);
+    esp_sleep_enable_timer_wakeup(10ULL * 1000000ULL);
     esp_deep_sleep_start();
 }
 
