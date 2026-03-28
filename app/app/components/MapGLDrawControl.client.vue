@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useMap } from '@indoorequal/vue-maplibre-gl'
-import MapboxDraw from '@mapbox/mapbox-gl-draw'
+import MapboxDraw, { type DrawCreateEvent, type DrawDeleteEvent, type DrawUpdateEvent } from '@mapbox/mapbox-gl-draw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
-import type { IControl, MapLayerEventType } from 'maplibre-gl'
+import type { IControl, Listener, MapLayerEventType } from 'maplibre-gl'
 import { onBeforeUnmount, watch } from 'vue'
 
 // MapLibre-compatible draw styles (arrays must be wrapped in ["literal", ...])
@@ -41,6 +41,15 @@ const model = defineModel<GeoJSON.FeatureCollection<GeoJSON.Polygon>>({
   default: () => ({ type: 'FeatureCollection', features: [] }),
 })
 
+type FeatWithoutId = Omit<GeoJSON.Feature<GeoJSON.Polygon>, 'id'>
+type FeatWithId = FeatWithoutId & { id: string }
+
+const emits = defineEmits<{
+  'fence-created': [fence: FeatWithoutId]
+  'fence-updated': [fence: FeatWithId]
+  'fence-deleted': [fence: FeatWithId]
+}>()
+
 const map = useMap()
 let draw: InstanceType<typeof MapboxDraw> | null = null
 
@@ -70,9 +79,30 @@ watch(
     // Load initial features if provided
     if (model.value.features.length) draw.set(model.value)
 
-    map.map.on('draw.create', onDrawChange)
-    map.map.on('draw.update', onDrawChange)
-    map.map.on('draw.delete', onDrawChange)
+    const onDrawCreate: Listener = (e: DrawCreateEvent) => {
+      if (!draw) return
+      if (!e.features[0]) return
+      const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Polygon>
+      emits('fence-created', feature as FeatWithoutId)
+    }
+
+    const onDrawUpdate: Listener = (e: DrawUpdateEvent) => {
+      if (!draw) return
+      if (!e.features[0]) return
+      const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Polygon>
+      emits('fence-updated', feature as FeatWithId)
+    }
+
+    const onDrawDelete: Listener = (e: DrawDeleteEvent) => {
+      if (!draw) return
+      if (!e.features[0]) return
+      const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Polygon>
+      emits('fence-deleted', feature as FeatWithId)
+    }
+
+    map.map.on('draw.create', onDrawCreate)
+    map.map.on('draw.update', onDrawUpdate)
+    map.map.on('draw.delete', onDrawDelete)
   },
 )
 
@@ -82,11 +112,6 @@ watch(
   features => draw?.set(features),
   { deep: true },
 )
-
-function onDrawChange() {
-  if (!draw) return
-  model.value = draw.getAll() as GeoJSON.FeatureCollection<GeoJSON.Polygon>
-}
 
 onBeforeUnmount(() => {
   // Let draw control be garbage collected; don't call removeControl since the
