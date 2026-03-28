@@ -7,6 +7,15 @@
     fetch-key="events"
     :handler="async () => await $trpc.events.list.query()"
   >
-    <MapGL :data="data ?? []" />
+    <AsyncFetch
+      v-slot="{ data: polygons }"
+      fetch-key="polygons"
+      :handler="async () => await $trpc.events.polygons.query()"
+    >
+      <MapGL
+        :events="data"
+        :fences="polygons"
+      />
+    </AsyncFetch>
   </AsyncFetch>
 </template>

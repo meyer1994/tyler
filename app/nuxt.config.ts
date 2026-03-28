@@ -49,7 +49,7 @@ export default defineNuxtConfig({
     server: {
       allowedHosts: [
         'free-loudly-dingo.ngrok-free.app',
-        'addition-democratic-multimedia-actual.trycloudflare.com',
+        'himself-spy-keyboards-foster.trycloudflare.com',
       ],
     },
   },

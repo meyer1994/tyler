@@ -71,6 +71,9 @@ importers:
       vue-router:
         specifier: ^5.0.4
         version: 5.0.4(@vue/compiler-sfc@3.5.31)(vue@3.5.31(typescript@6.0.2))
+      wkx:
+        specifier: ^0.5.0
+        version: 0.5.0
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -6764,6 +6767,9 @@ packages:
     resolution: {integrity: sha512-oGLe46MIrCRqX7ytPUf66EAYvdeMIZYn3WaocqqKZAxrBpkqHfL/qvTyJ/bTk5+AqHCjXmrv3CEWgy368zhRUg==}
     engines: {node: ^20.17.0 || >=22.9.0}
     hasBin: true
+
+  wkx@0.5.0:
+    resolution: {integrity: sha512-Xng/d4Ichh8uN4l0FToV/258EjMGU9MGcA0HV2d9B/ZpZB3lqQm7nkOdZdm5GhKtLLhAE7PiVQwN4eN+2YJJUg==}
 
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
@@ -13845,6 +13851,10 @@ snapshots:
   which@6.0.1:
     dependencies:
       isexe: 4.0.0
+
+  wkx@0.5.0:
+    dependencies:
+      '@types/node': 25.5.0
 
   word-wrap@1.2.5: {}
 

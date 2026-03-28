@@ -1,6 +1,7 @@
 import type { SQL } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import {
+  customType,
   geometry,
   index,
   integer,
@@ -10,7 +11,25 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core'
 
+import { Geometry } from 'wkx'
+
 export * from './auth'
+
+// Adapted from:
+// https://github.com/drizzle-team/drizzle-orm/discussions/2383#discussioncomment-11895854
+const polygon = customType<{ data: GeoJSON.Polygon, driverData: string }>({
+  dataType() {
+    return 'geometry(Polygon, 4326)'
+  },
+  toDriver(value: GeoJSON.Polygon): SQL {
+    return sql`ST_GeomFromGeoJSON(${JSON.stringify(value)})`
+  },
+  fromDriver(data: string): GeoJSON.Polygon {
+    const buffer = Buffer.from(data, 'hex')
+    const geoJson = Geometry.parse(buffer).toGeoJSON()
+    return geoJson as GeoJSON.Polygon
+  },
+})
 
 export const events = pgTable('events',
   {
@@ -46,5 +65,27 @@ export const events = pgTable('events',
     index('events_created_at_idx').on(table.createdAt),
     index('events_lat_lon_idx').on(table.lat, table.lon),
     index('events_point_idx').using('gist', table.point),
+  ],
+)
+
+export const fences = pgTable('fences',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+
+    polygon: polygon('polygon')
+      .notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+  },
+  table => [
+    index('fences_polygon_idx').using('gist', table.polygon),
   ],
 )
