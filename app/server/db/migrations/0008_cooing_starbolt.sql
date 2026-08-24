@@ -1,1 +1,0 @@
-ALTER TABLE "fences" ADD COLUMN "area" real GENERATED ALWAYS AS (ST_Area("fences"."polygon", true)) STORED NOT NULL;

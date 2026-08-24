@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import * as z from 'zod'
 import { events, fences, relFencesEvents } from '../db/schema'
-import { serverDrizzle } from '../lib/drizzle'
+import { db } from '../lib/drizzle'
 
 const query = z.object({
   lat: z.number(),
@@ -19,7 +19,6 @@ export default defineEventHandler(async (event) => {
   console.log(body)
 
   const task = async () => {
-    const db = serverDrizzle(event)
     const [item] = await db
       .insert(events)
       .values({

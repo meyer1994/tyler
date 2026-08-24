@@ -1,17 +1,14 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import type { H3Event } from 'h3'
 import * as schema from '../db/schema'
-import { serverDrizzle } from './drizzle'
 
-export const serverAuth = (event: H3Event) => {
-  const db = serverDrizzle(event)
+import { db } from './drizzle'
 
-  const auth = betterAuth({
+export const auth = betterAuth({
     database: drizzleAdapter(db, {
-      provider: 'sqlite',
-      // debugLogs: true,
       schema,
+      provider: 'sqlite',
+      debugLogs: import.meta.dev,
     }),
 
     advanced: {
@@ -31,6 +28,3 @@ export const serverAuth = (event: H3Event) => {
       'https://*.meyer1994.workers.dev',
     ],
   })
-
-  return auth
-}

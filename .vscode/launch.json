@@ -1,33 +1,32 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
   "version": "0.2.0",
   "configurations": [
     {
       "type": "chrome",
       "request": "launch",
-      "name": "client: chrome",
+      "name": "app: chrome",
       "url": "http://localhost:3000",
-      // this should point to your Nuxt `srcDir`, which is `app` by default
-      "webRoot": "${workspaceFolder}/app"
+      "webRoot": "${workspaceFolder}/app/app"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "server: nuxt",
+      "name": "app: nuxt",
+      "cwd": "${workspaceFolder}/app",
+      "program": "${workspaceFolder}/app/node_modules/nuxt/bin/nuxt.mjs",
+      "args": ["dev"],
+      "envFile": "${workspaceFolder}/app/.env",
+      "console": "integratedTerminal",
       "outputCapture": "std",
-      "program": "${workspaceFolder}/node_modules/nuxt/bin/nuxt.mjs",
-      "args": [
-        "dev"
-      ],
+      "skipFiles": ["<node_internals>/**"]
     }
   ],
   "compounds": [
     {
-      "name": "fullstack: nuxt",
+      "name": "app: fullstack",
       "configurations": [
-        "server: nuxt",
-        "client: chrome"
+        "app: nuxt",
+        "app: chrome"
       ]
     }
   ]

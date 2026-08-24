@@ -1,4 +1,10 @@
 {
+  "eslint.workingDirectories": [
+    {
+      "directory": "${workspaceFolder}/app",
+      "mode": "auto"
+    }
+  ],
   "[typescript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint",
     "editor.tabSize": 2,
@@ -6,7 +12,7 @@
     "editor.trimAutoWhitespace": true,
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "always",
-      "source.organizeImports": "always",
+      "source.organizeImports": "always"
     }
   },
   "[vue]": {
@@ -33,20 +39,12 @@
     "editor.defaultFormatter": "vscode.json-language-features",
     "editor.tabSize": 2,
     "editor.insertSpaces": true,
-    "editor.trimAutoWhitespace": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "always",
-      "source.organizeImports": "always"
-    }
+    "editor.trimAutoWhitespace": true
   },
   "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features",
     "editor.tabSize": 2,
     "editor.insertSpaces": true,
-    "editor.trimAutoWhitespace": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "always",
-      "source.organizeImports": "always"
-    }
+    "editor.trimAutoWhitespace": true
   }
 }

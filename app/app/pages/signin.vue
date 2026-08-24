@@ -66,7 +66,6 @@ const providers = computed<ButtonProps[]>(() => [
   },
 ])
 
-type SigninSchema = z.output<typeof signinSchema>
 type SignupSchema = z.output<typeof signupSchema>
 
 const onSignup = async (e: FormSubmitEvent<SignupSchema>) => {

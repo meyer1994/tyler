@@ -1,8 +1,8 @@
 import { initTRPC, type AnyRouter } from '@trpc/server'
 import type { BetterAuthClientOptions, InferSessionFromClient, InferUserFromClient } from 'better-auth'
 import type { H3Event } from 'h3'
-import { serverAuth } from './auth'
-import { serverDrizzle } from './drizzle'
+import { auth } from './auth'
+import { db } from './drizzle'
 
 type Session = {
   user: InferUserFromClient<BetterAuthClientOptions>
@@ -11,8 +11,8 @@ type Session = {
 
 export type TRPCContext = {
   event: H3Event
-  db: ReturnType<typeof serverDrizzle>
-  auth: ReturnType<typeof serverAuth>
+  db: typeof db
+  auth: typeof auth
   session: Session | null
 }
 
@@ -25,18 +25,11 @@ export const createTRPCContext = async (event: H3Event) => {
   * @see: https://trpc.io/docs/server/context
   */
 
-  const auth = serverAuth(event)
-  const db = serverDrizzle(event)
   const session = await auth.api.getSession({ headers: event.headers })
   console.info('[server.trpc] user id', session?.user?.id)
   console.info('[server.trpc] session id', session?.session?.id)
 
-  return {
-    event,
-    db,
-    auth,
-    session,
-  } satisfies TRPCContext
+  return { event, db, auth, session } satisfies TRPCContext
 }
 
 // Avoid exporting the entire t-object since it's not very descriptive. For
