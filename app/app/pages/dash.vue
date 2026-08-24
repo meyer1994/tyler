@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 
-definePageMeta({ auth: true })
+const { $auth } = useNuxtApp()
+const { data: session, clear } = $auth.useSession()
+const user = computed(() => session.value?.user ?? null)
 
-const { user, signOut } = useAuth()
+const signOut = async () => {
+  const { error, data } = await $auth.signOut()
+  if (error) console.error(error)
+  if (data?.success) clear()
+  if (data?.success) await reloadNuxtApp({ path: '/' })
+}
 
 const navItems: NavigationMenuItem[] = [
   {

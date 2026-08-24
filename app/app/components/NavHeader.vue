@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 
-const { loggedIn, signOut } = useAuth()
+const { $auth } = useNuxtApp()
+const { data: session, clear } = $auth.useSession()
 
 const loggedInItems = ref<NavigationMenuItem[]>([
   {
@@ -21,8 +22,10 @@ const loggedInItems = ref<NavigationMenuItem[]>([
     icon: 'i-lucide-log-out',
     description: 'Sign out of your account',
     onSelect: async () => {
-      await signOut()
-      await reloadNuxtApp({ path: '/' })
+      const { error, data } = await $auth.signOut()
+      if (error) console.error(error)
+      if (data?.success) clear()
+      if (data?.success) await reloadNuxtApp({ path: '/' })
     },
   },
 ])
@@ -37,7 +40,7 @@ const loggedOutItems = ref<NavigationMenuItem[]>([
 ])
 
 const items = computed(() =>
-  loggedIn.value ? loggedInItems.value : loggedOutItems.value,
+  session.value?.user ? loggedInItems.value : loggedOutItems.value,
 )
 </script>
 

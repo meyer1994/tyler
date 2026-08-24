@@ -32,6 +32,7 @@ CREATE TABLE "rel_fences_events" (
 --> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY NOT NULL,
+	"issuer" text NOT NULL,
 	"account_id" text NOT NULL,
 	"provider_id" text NOT NULL,
 	"user_id" text NOT NULL,
@@ -97,6 +98,7 @@ CREATE INDEX "fences_events_fence_id_event_id_idx" ON "rel_fences_events" USING 
 CREATE INDEX "fences_events_event_id_fence_id_idx" ON "rel_fences_events" USING btree ("event_id","fence_id");--> statement-breakpoint
 CREATE INDEX "fences_events_created_at_idx" ON "rel_fences_events" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "fences_events_updated_at_idx" ON "rel_fences_events" USING btree ("updated_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "account_issuer_accountId_uidx" ON "account" USING btree ("issuer","account_id");--> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");

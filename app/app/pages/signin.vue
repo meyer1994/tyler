@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { AuthFormField, ButtonProps, FormSubmitEvent } from '@nuxt/ui'
+import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
 import * as z from 'zod'
 
 const mode = ref<'signin' | 'signup'>('signin')
+const loading = ref(false)
 
 const signinSchema = z.object({
   email: z.email('Invalid email'),
@@ -14,8 +15,13 @@ const signupSchema = z.object({
   password: z.string('Password is required').min(8, 'Must be at least 8 characters'),
 })
 
+type SigninSchema = z.output<typeof signinSchema>
+type SignupSchema = z.output<typeof signupSchema>
+
 const toast = useToast()
-const { client: auth, loggedIn } = useAuth()
+const { $auth } = useNuxtApp()
+const { data: session } = $auth.useSession()
+const loggedIn = computed(() => !!session.value?.user)
 
 const signinFields: AuthFormField[] = [
   {
@@ -51,37 +57,46 @@ const signupFields: AuthFormField[] = [
   },
 ]
 
-const providers = computed<ButtonProps[]>(() => [
-  {
-    label: 'GitHub',
-    icon: 'i-simple-icons-github',
-    class: 'p-2',
-    onClick: async () => { toast.add({ title: 'GitHub', description: 'Sign in with GitHub' }) },
-  },
-  {
-    label: 'Google',
-    icon: 'i-simple-icons-google',
-    class: 'p-2',
-    onClick: async () => { toast.add({ title: 'Google', description: 'Sign in with Google' }) },
-  },
-])
-
-type SignupSchema = z.output<typeof signupSchema>
-
-const onSignup = async (e: FormSubmitEvent<SignupSchema>) => {
-  await auth.signUp.email({
-    name: e.data.email,
-    email: e.data.email,
-    password: e.data.password,
+const onSignin = async (event: FormSubmitEvent<SigninSchema>) => {
+  loading.value = true
+  const { error, data } = await $auth.signIn.email({
+    email: event.data.email,
+    password: event.data.password,
     callbackURL: '/dash',
   })
-  await navigateTo('/dash')
+  loading.value = false
+
+  if (error) {
+    console.error(error)
+    toast.add({ title: 'Sign-in failed', description: error.message, color: 'error' })
+    return
+  }
+
+  if (data) await reloadNuxtApp({ path: '/dash' })
+}
+
+const onSignup = async (event: FormSubmitEvent<SignupSchema>) => {
+  loading.value = true
+  const { error, data } = await $auth.signUp.email({
+    name: event.data.email,
+    email: event.data.email,
+    password: event.data.password,
+    callbackURL: '/dash',
+  })
+  loading.value = false
+
+  if (error) {
+    console.error(error)
+    toast.add({ title: 'Sign-up failed', description: error.message, color: 'error' })
+    return
+  }
+
+  if (data) await reloadNuxtApp({ path: '/dash' })
 }
 </script>
 
 <template>
   <div class="flex flex-col lg:flex-row min-h-screen">
-    <!-- Left branding panel -->
     <div class="hidden lg:flex lg:w-1/2 bg-gray-950 p-12 flex-col justify-between">
       <div>
         <div class="flex items-center gap-2 mb-12">
@@ -109,13 +124,11 @@ const onSignup = async (e: FormSubmitEvent<SignupSchema>) => {
       </div>
     </div>
 
-    <!-- Right form panel -->
     <div class="flex-1 flex items-center justify-center p-6">
       <div
         v-if="!loggedIn"
         class="w-full max-w-md"
       >
-        <!-- Tab toggle -->
         <div class="flex gap-1 mb-8">
           <button
             class="flex-1 py-2 px-4 text-sm font-medium transition-colors rounded"
@@ -136,40 +149,25 @@ const onSignup = async (e: FormSubmitEvent<SignupSchema>) => {
           </button>
         </div>
 
-        <!-- Sign In form -->
-        <div v-if="mode === 'signin'">
-          <AsyncSubmit
-            v-slot="{ submit, status }"
-            :schema="signinSchema"
-            :handler="async (data) => await auth.signIn.email({
-              email: data.email,
-              password: data.password,
-              callbackURL: '/dash',
-            })"
-          >
-            <UAuthForm
-              :schema="signinSchema"
-              title="Welcome Back"
-              description="Enter your credentials to access."
-              :fields="signinFields"
-              :providers="providers"
-              :loading="status === 'pending'"
-              @submit="submit($event.data)"
-            />
-          </AsyncSubmit>
-        </div>
+        <UAuthForm
+          v-if="mode === 'signin'"
+          :schema="signinSchema"
+          title="Welcome Back"
+          description="Enter your credentials to access."
+          :fields="signinFields"
+          :loading="loading"
+          @submit="onSignin"
+        />
 
-        <!-- Sign Up form -->
-        <div v-else>
-          <UAuthForm
-            :schema="signupSchema"
-            title="Create Account"
-            description="Sign up to start tracking your devices."
-            :fields="signupFields"
-            :providers="providers"
-            @submit="async (e: FormSubmitEvent<unknown>) => await onSignup(e as FormSubmitEvent<SignupSchema>)"
-          />
-        </div>
+        <UAuthForm
+          v-else
+          :schema="signupSchema"
+          title="Create Account"
+          description="Sign up to start tracking your devices."
+          :fields="signupFields"
+          :loading="loading"
+          @submit="onSignup"
+        />
       </div>
     </div>
   </div>

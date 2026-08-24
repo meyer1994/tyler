@@ -16,7 +16,7 @@ export const useTRPC = () => {
 
   return createTRPCNuxtClient<AppRouter>({
     links: [
-      loggerLink({ enabled: () => typeof window !== 'undefined' }),
+      loggerLink({ enabled: () => import.meta.dev && !import.meta.server }),
       splitLink({
         // we need this split link to be able to send files, and FormData to the
         // trpc server. we cannot use send "multiple" FormData in a single request

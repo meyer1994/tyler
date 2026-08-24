@@ -1,8 +1,9 @@
 <script setup lang="ts">
-const { loggedIn } = useAuth()
+const { $auth } = useNuxtApp()
+const { data: session } = $auth.useSession()
 
 const heroLinks = computed(() => {
-  if (loggedIn.value) {
+  if (session.value?.user) {
     return [
       { label: 'Go to Dashboard', to: '/dash', icon: 'i-lucide-layout-dashboard', color: 'primary' as const },
     ]
