@@ -45,5 +45,6 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+      - run: uv venv --seed
       - run: uv sync --locked
       - run: uv run pio run
