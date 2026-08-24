@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends GeoJSON.GeoJsonProperties">
-import { useMap } from '@indoorequal/vue-maplibre-gl';
+import { useMap } from '@indoorequal/vue-maplibre-gl'
 
 type Props = {
   zoom?: number
