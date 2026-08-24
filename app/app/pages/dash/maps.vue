@@ -27,9 +27,9 @@ const center = ref<PointExpression>([-27.5954, -48.5480]) // Florianópolis, Bra
         />
 
         <LMarker
-          v-for="event in data"
+          v-for="event in data?.features ?? []"
           :key="event.id"
-          :lat-lng="[event.lat, event.lon]"
+          :lat-lng="[event.geometry.coordinates[1]!, event.geometry.coordinates[0]!]"
         />
       </LMap>
     </ClientOnly>
