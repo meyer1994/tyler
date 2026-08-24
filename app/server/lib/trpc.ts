@@ -1,8 +1,12 @@
 import { initTRPC, type AnyRouter } from '@trpc/server'
 import type { BetterAuthClientOptions, InferSessionFromClient, InferUserFromClient } from 'better-auth'
-import type { H3Event } from 'h3'
 import { auth } from './auth'
 import { db } from './drizzle'
+
+type TRPCEvent = {
+  headers: Headers
+  path: string
+}
 
 type Session = {
   user: InferUserFromClient<BetterAuthClientOptions>
@@ -10,7 +14,7 @@ type Session = {
 }
 
 export type TRPCContext = {
-  event: H3Event
+  event: TRPCEvent
   db: typeof db
   auth: typeof auth
   session: Session | null
@@ -20,7 +24,7 @@ export type TRPCContextProtected = TRPCContext & {
   session: Session
 }
 
-export const createTRPCContext = async (event: H3Event) => {
+export const createTRPCContext = async (event: TRPCEvent) => {
   /**
   * @see: https://trpc.io/docs/server/context
   */
@@ -76,7 +80,7 @@ export const protectedProcedure = t.procedure.use(logger).use(isAuthenticated)
  */
 export const serverTRPC = async <TRouter extends AnyRouter>(
   router: TRouter,
-  event: H3Event,
+  event: TRPCEvent,
 ) => {
   const context = await createTRPCContext(event)
   return createCallerFactory(router)(context)

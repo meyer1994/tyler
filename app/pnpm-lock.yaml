@@ -53,6 +53,9 @@ importers:
       geojson:
         specifier: ^0.5.0
         version: 0.5.0
+      h3:
+        specifier: ^1.15.11
+        version: 1.15.11
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4

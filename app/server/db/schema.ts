@@ -1,3 +1,4 @@
+import type { Polygon } from 'geojson'
 import type { SQL } from 'drizzle-orm'
 import { relations, sql } from 'drizzle-orm'
 import {
@@ -17,17 +18,17 @@ export * from './auth'
 
 // Adapted from:
 // https://github.com/drizzle-team/drizzle-orm/discussions/2383#discussioncomment-11895854
-const polygon = customType<{ data: GeoJSON.Polygon, driverData: string }>({
+const polygon = customType<{ data: Polygon, driverData: string }>({
   dataType() {
     return 'geometry(Polygon, 4326)'
   },
-  toDriver(value: GeoJSON.Polygon): SQL {
+  toDriver(value: Polygon): SQL {
     return sql`ST_GeomFromGeoJSON(${JSON.stringify(value)})`
   },
-  fromDriver(data: string): GeoJSON.Polygon {
+  fromDriver(data: string): Polygon {
     const buffer = Buffer.from(data, 'hex')
     const geoJson = Geometry.parse(buffer).toGeoJSON()
-    return geoJson as GeoJSON.Polygon
+    return geoJson as Polygon
   },
 })
 

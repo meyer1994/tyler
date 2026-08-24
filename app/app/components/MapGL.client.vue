@@ -15,8 +15,8 @@ const props = withDefaults(defineProps<Props>(), {
   fences: () => ({ type: 'FeatureCollection', features: [] }),
 })
 
+type FeatWithId = Omit<GeoJSON.Feature<GeoJSON.Polygon>, 'id'> & { id: string }
 type FeatWithoutId = Omit<GeoJSON.Feature<GeoJSON.Polygon>, 'id'>
-type FeatWithId = FeatWithoutId & { id: string }
 
 const emits = defineEmits<{
   'fence-created': [fence: FeatWithoutId]

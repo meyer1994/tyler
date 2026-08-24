@@ -2,7 +2,7 @@
 import { useMap } from '@indoorequal/vue-maplibre-gl'
 import MapboxDraw, { type DrawCreateEvent, type DrawDeleteEvent, type DrawUpdateEvent } from '@mapbox/mapbox-gl-draw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
-import type { IControl, Listener, MapLayerEventType } from 'maplibre-gl'
+import type { IControl, Map as MapLibreMap, Subscription } from 'maplibre-gl'
 import { onBeforeUnmount, watch } from 'vue'
 
 // MapLibre-compatible draw styles (arrays must be wrapped in ["literal", ...])
@@ -29,8 +29,15 @@ const STYLES_DRAW = [
 // MapLibre compatibility: patch CSS class constants used by MapboxDraw this is
 // needed so the controls appear with correct styling in maplibre-gl
 //
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CLASSES_DRAW = MapboxDraw.constants.classes as any
+type MapLibreDrawClasses = {
+  CANVAS: string
+  CONTROL_BASE: string
+  CONTROL_PREFIX: string
+  CONTROL_GROUP: string
+  ATTRIBUTION: string
+}
+
+const CLASSES_DRAW = MapboxDraw.constants.classes as unknown as MapLibreDrawClasses
 CLASSES_DRAW.CANVAS = 'maplibregl-canvas'
 CLASSES_DRAW.CONTROL_BASE = 'maplibregl-ctrl'
 CLASSES_DRAW.CONTROL_PREFIX = 'maplibregl-ctrl-'
@@ -41,8 +48,8 @@ const model = defineModel<GeoJSON.FeatureCollection<GeoJSON.Polygon>>({
   default: () => ({ type: 'FeatureCollection', features: [] }),
 })
 
+type FeatWithId = Omit<GeoJSON.Feature<GeoJSON.Polygon>, 'id'> & { id: string }
 type FeatWithoutId = Omit<GeoJSON.Feature<GeoJSON.Polygon>, 'id'>
-type FeatWithId = FeatWithoutId & { id: string }
 
 const emits = defineEmits<{
   'fence-created': [fence: FeatWithoutId]
@@ -59,14 +66,13 @@ watch(
     if (!loaded) return
     if (!map.map) return
 
-    // Patch map.on for maplibre-gl v5 compatibility with mapbox-gl-draw touch
-    // events
-    const originalOn = map.map.on.bind(map.map)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    map.map.on = (type: keyof MapLayerEventType, handler: any, options?: any) => {
-      return originalOn(type, handler, options)
+    type DrawMap = MapLibreMap & {
+      on(type: 'draw.create', listener: (event: DrawCreateEvent) => void): Subscription
+      on(type: 'draw.update', listener: (event: DrawUpdateEvent) => void): Subscription
+      on(type: 'draw.delete', listener: (event: DrawDeleteEvent) => void): Subscription
     }
+
+    const drawMap = map.map as DrawMap
 
     draw = new MapboxDraw({
       displayControlsDefault: false,
@@ -75,34 +81,27 @@ watch(
     })
 
     map.map.addControl(draw as unknown as IControl)
-
     // Load initial features if provided
     if (model.value.features.length) draw.set(model.value)
 
-    const onDrawCreate: Listener = (e: DrawCreateEvent) => {
+    const onDrawCreate = (e: DrawCreateEvent) => {
       if (!draw) return
-      if (!e.features[0]) return
-      const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Polygon>
-      emits('fence-created', feature as FeatWithoutId)
+      emits('fence-created', e.features[0] as FeatWithoutId)
     }
 
-    const onDrawUpdate: Listener = (e: DrawUpdateEvent) => {
+    const onDrawUpdate = (e: DrawUpdateEvent) => {
       if (!draw) return
-      if (!e.features[0]) return
-      const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Polygon>
-      emits('fence-updated', feature as FeatWithId)
+      emits('fence-updated', e.features[0] as FeatWithId)
     }
 
-    const onDrawDelete: Listener = (e: DrawDeleteEvent) => {
+    const onDrawDelete = (e: DrawDeleteEvent) => {
       if (!draw) return
-      if (!e.features[0]) return
-      const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Polygon>
-      emits('fence-deleted', feature as FeatWithId)
+      emits('fence-deleted', e.features[0] as FeatWithId)
     }
 
-    map.map.on('draw.create', onDrawCreate)
-    map.map.on('draw.update', onDrawUpdate)
-    map.map.on('draw.delete', onDrawDelete)
+    drawMap.on('draw.create', onDrawCreate)
+    drawMap.on('draw.update', onDrawUpdate)
+    drawMap.on('draw.delete', onDrawDelete)
   },
 )
 

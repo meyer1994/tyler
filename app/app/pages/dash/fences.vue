@@ -4,7 +4,7 @@ import type { TableColumn } from '@nuxt/ui'
 
 type Item = AppRouterOutputs['fences']['list']
 type Row = Item['features'][number]
-type Keys = keyof Row['properties'] | 'count' | 'actions'
+type Keys = 'id' | 'area' | 'count' | 'createdAt' | 'updatedAt' | 'actions'
 
 const columns: TableColumn<Row>[] = [
   { id: 'id', accessorKey: 'properties.id', header: 'ID' },
@@ -30,6 +30,7 @@ const visible: Ref<Record<Keys, boolean>> = ref({
 })
 
 const table = useTemplateRef('table')
+const { $trpc } = useNuxtApp()
 
 const deleteFence = async (id: string, refresh: () => Promise<unknown>) => {
   await $trpc.fences.delete.mutate({ id })
@@ -52,7 +53,7 @@ const deleteFence = async (id: string, refresh: () => Promise<unknown>) => {
             variant="ghost"
             size="sm"
             class="ml-auto"
-            @click="refresh"
+            @click="refresh()"
           />
 
           <UDropdownMenu

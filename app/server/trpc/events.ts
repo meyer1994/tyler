@@ -1,3 +1,4 @@
+import type { FeatureCollection, Point } from 'geojson'
 import { desc } from 'drizzle-orm'
 import { events } from '~~/server/db/schema'
 import { createTRPCRouter, protectedProcedure } from '../lib/trpc'
@@ -14,7 +15,7 @@ export const eventsRouter = createTRPCRouter({
 
       type Item = Omit<typeof data[number], 'point'>
 
-      const coll: GeoJSON.FeatureCollection<GeoJSON.Point, Item> = {
+      const coll: FeatureCollection<Point, Item> = {
         type: 'FeatureCollection',
         features: data.map(e => ({
           id: e.id,

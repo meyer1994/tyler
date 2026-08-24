@@ -33,6 +33,7 @@
     "drizzle-orm": "^0.45.2",
     "echarts": "^6.1.0",
     "geojson": "^0.5.0",
+    "h3": "^1.15.11",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^6.5.0",
     "nuxt": "^4.5.2",

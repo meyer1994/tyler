@@ -1,3 +1,4 @@
+import type { FeatureCollection, Polygon } from 'geojson'
 import { countDistinct, desc, eq } from 'drizzle-orm'
 import z from 'zod'
 import { fences, relFencesEvents } from '~~/server/db/schema'
@@ -22,7 +23,7 @@ export const fencesRouter = createTRPCRouter({
 
       type Properties = Omit<typeof data[number], 'polygon'>
 
-      const features: GeoJSON.FeatureCollection<GeoJSON.Polygon, Properties> = {
+      const features: FeatureCollection<Polygon, Properties> = {
         type: 'FeatureCollection',
         features: data.map(f => ({
           id: f.id,
