@@ -27,7 +27,7 @@ export default defineNuxtConfig({
     transpile: ['trpc-nuxt', 'leaflet'],
   },
 
-  compatibilityDate: '2026-03-28',
+  compatibilityDate: '2026-08-24',
 
   nitro: {
     preset: 'node-server',
