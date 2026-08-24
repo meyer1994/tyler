@@ -26,3 +26,21 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run build
+
+  firmware:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./firmware
+    env:
+      SERVER_HOST: localhost
+      SERVER_PORT: 3000
+      SERVER_PATH: /api/event
+      CELLULAR_APN: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: pip install platformio
+      - run: pio run
