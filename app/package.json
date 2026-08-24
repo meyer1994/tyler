@@ -31,6 +31,7 @@
     "@vueuse/nuxt": "^14.4.0",
     "better-auth": "^1.7.1",
     "drizzle-orm": "^0.45.2",
+    "echarts": "^6.1.0",
     "geojson": "^0.5.0",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^6.5.0",
@@ -39,6 +40,7 @@
     "pg": "^8.23.0",
     "trpc-nuxt": "^2.1.2",
     "vue": "^3.5.41",
+    "vue-echarts": "^8.1.0",
     "vue-router": "^5.2.0",
     "wkx": "^0.5.0",
     "zod": "^4.4.3"
