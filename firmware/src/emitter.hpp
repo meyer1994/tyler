@@ -2,13 +2,17 @@
 
 #include <esp_err.h>
 #include <esp_event.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
+#include <new>
 #include <type_traits>
+#include <utility>
 
 struct NoPayload {};
 
@@ -38,6 +42,8 @@ class EventEmitter {
         "EventEmitter requires an enum type");
 
 public:
+    using AfterHandler = void (*)(void* context);
+
     explicit EventEmitter(esp_event_base_t base)
         : base_(base) {}
 
@@ -80,6 +86,39 @@ public:
 
     template <EventEnum E>
     using Handler = typename EventHandler<EventPayloadT<E>>::type;
+
+    esp_err_t after(
+        uint32_t milliseconds,
+        AfterHandler handler,
+        void* context = nullptr) {
+        if (!loop_) return ESP_ERR_INVALID_STATE;
+        if (!handler) return ESP_ERR_INVALID_ARG;
+
+        auto* call = new (std::nothrow) AfterCall{
+            nullptr,
+            [handler, context] {
+                handler(context);
+            }};
+        if (!call) return ESP_ERR_NO_MEM;
+
+        esp_timer_create_args_t args{};
+        args.callback = &timer_callback;
+        args.arg = call;
+        args.dispatch_method = ESP_TIMER_TASK;
+        args.name = "emitter_after";
+
+        esp_err_t result = esp_timer_create(&args, &call->timer);
+        if (result == ESP_OK) {
+            result = esp_timer_start_once(
+                call->timer,
+                static_cast<uint64_t>(milliseconds) * 1000ULL);
+        }
+        if (result != ESP_OK) {
+            if (call->timer) (void)esp_timer_delete(call->timer);
+            delete call;
+        }
+        return result;
+    }
 
     template <EventEnum E>
     esp_err_t on(Handler<E> handler, void* context = nullptr) {
@@ -152,6 +191,26 @@ public:
     }
 
 private:
+    struct AfterCall {
+        esp_timer_handle_t timer;
+        std::function<void()> handler;
+    };
+
+    static void timer_callback(void* argument) {
+        auto* call = static_cast<AfterCall*>(argument);
+        auto handler = std::move(call->handler);
+
+        // One-shot timers are inactive when their callback starts. Delete the
+        // timer and closure before invoking user code so it can schedule a new
+        // callback without consuming a permanent timer slot.
+        (void)esp_timer_delete(call->timer);
+        delete call;
+
+        // This runs on the ESP timer task. Callbacks must be short and
+        // non-blocking; emit events or queue work for longer operations.
+        handler();
+    }
+
     struct Slot;
 
     using Invoker = void (*)(Slot*, void* event_data);
