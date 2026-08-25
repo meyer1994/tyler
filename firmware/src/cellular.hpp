@@ -5,8 +5,13 @@
 #include <TinyGsmClient.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
+#include <future>
+#include <stdexcept>
 #include <string>
-#include "./future.hpp"
+#include <thread>
+#include <utility>
+#include <esp_pthread.h>
+#include "./result.hpp"
 
 // https://github.com/jbasu2013/T-A7670X/blob/main/examples/HttpClient/utilities.h#L18-L35
 #define MODEM_BAUDRATE                      (115200)
@@ -42,10 +47,10 @@ public:
         return addr;
     }
 
-    SharedFuture<HttpResponse> post(const String& host, int port,
+    std::future<Result<HttpResponse>> post(const String& host, int port,
                            const String& path, const String& body) {
         auto modem = modem_;
-        return SharedFuture<HttpResponse>([modem, host, port, path, body]() -> SharedFuture<HttpResponse>::Result {
+        return runAsync<HttpResponse>([modem, host, port, path, body]() -> Result<HttpResponse> {
             if (!modem) return tl::make_unexpected(Error("not initialized"));
 
             TinyGsmClient client(*modem);
@@ -75,9 +80,9 @@ public:
         }, "cell_post", 16384);
     }
 
-    SharedFuture<bool> open(const char* apn) {
+    std::future<Result<bool>> open(const char* apn) {
         std::string apn_str(apn);
-        return SharedFuture<bool>([this, apn_str]() -> SharedFuture<bool>::Result {
+        return runAsync<bool>([this, apn_str]() -> Result<bool> {
             pinMode(BOARD_POWERON_PIN, OUTPUT);
             digitalWrite(BOARD_POWERON_PIN, HIGH);
             pinMode(MODEM_RESET_PIN, OUTPUT);
@@ -114,5 +119,38 @@ public:
     }
 
 private:
+    template <typename T, typename Fn>
+    static std::future<Result<T>> runAsync(
+        Fn&& fn, const char* name, size_t stack_size) {
+
+        std::packaged_task<Result<T>()> task(std::forward<Fn>(fn));
+        auto future = task.get_future();
+
+        esp_pthread_cfg_t previous{};
+        const bool had_previous = esp_pthread_get_cfg(&previous) == ESP_OK;
+        const esp_pthread_cfg_t restore =
+            had_previous ? previous : esp_pthread_get_default_config();
+
+        esp_pthread_cfg_t cfg = esp_pthread_get_default_config();
+        cfg.stack_size = stack_size;
+        cfg.prio = 1;
+        cfg.inherit_cfg = false;
+        cfg.thread_name = name;
+        cfg.pin_to_core = tskNO_AFFINITY;
+
+        if (esp_pthread_set_cfg(&cfg) != ESP_OK)
+            throw std::runtime_error("cellular thread configuration failed");
+
+        try {
+            std::thread worker(std::move(task));
+            worker.detach();
+            esp_pthread_set_cfg(&restore);
+        } catch (...) {
+            esp_pthread_set_cfg(&restore);
+            throw;
+        }
+        return future;
+    }
+
     std::shared_ptr<TinyGsm> modem_;
 };

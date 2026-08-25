@@ -1,12 +1,19 @@
-.PHONY: build upload monitor
+.PHONY: build build-all upload monitor
 
+ENV ?= lilygo-t-a7670g
+PORT ?= /dev/ttyACM0
 
 build:
-	pnpx dotenv-cli -e .env -- platformio run
+	uv run --env-file .env platformio run -e $(ENV)
+
+build-all:
+	uv run --env-file .env platformio run \
+		-e lilygo-t-a7670g \
+		-e lilygo-t-sim7000g
 
 upload:
 	pkill screen || true
-	pnpx dotenv-cli -e .env -- platformio run --target upload
+	uv run --env-file .env platformio run -e $(ENV) --target upload
 
 monitor:
-	screen -L /dev/ttyACM0 115200
+	screen -L $(PORT) 115200

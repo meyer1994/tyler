@@ -29,14 +29,18 @@ jobs:
 
   firmware:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment:
+          - lilygo-t-a7670g
+          - lilygo-t-sim7000g
     defaults:
       run:
         working-directory: ./firmware
     env:
-      SERVER_HOST: localhost
-      SERVER_PORT: 3000
-      SERVER_PATH: /api/event
-      CELLULAR_APN: ci
+      WIFI_SSID: ci
+      WIFI_PASS: ci
+      SERVER_URL: http://localhost:3000/api/event
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -47,4 +51,4 @@ jobs:
           enable-cache: true
       - run: uv venv --seed
       - run: uv sync --locked
-      - run: uv run pio run
+      - run: uv run pio run -e ${{ matrix.environment }}

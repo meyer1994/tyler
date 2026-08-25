@@ -1,120 +1,76 @@
 # Firmware
 
-FreeRTOS-based ESP32 firmware for GPS tracking. Connects to WiFi and acquires a
-GPS fix concurrently, then sends the location to the server via HTTP GET.
+ESP32/Arduino firmware that streams GPS fixes to an HTTP backend over Wi-Fi.
 
-## Architecture
+## Supported boards
 
-The firmware uses a task-based architecture where WiFi connection and GPS
-acquisition happen in parallel. `SetupTask` is the orchestrator — it launches
-both worker tasks and waits for their results via `Future<T>`.
+| PlatformIO environment | Board | GPS source |
+| --- | --- | --- |
+| `lilygo-t-a7670g` | LILYGO T-A7670G | External UART GPS on GPIO 22/21 |
+| `lilygo-t-sim7000g` | LILYGO T-SIM7000G (classic ESP32) | SIM7000G built-in GNSS |
 
-### Task layout
+The T-SIM7000G modem uses GPIO 26/27 for its UART, GPIO 4 for PWRKEY, and
+GPIO 25 for DTR. Its GNSS antenna power is enabled through SIM7000G GPIO 48.
 
-```
-setup()
-  └── App::start()
-        └── SetupTask (core 1)
-              ├── GpsTask (core 0)   ← registers serial callback, exits
-              └── WifiTask (core 1)  ← registers WiFi event, exits
-```
+## Runtime
 
-Worker tasks exit immediately after registering their callbacks. Results are
-delivered asynchronously via `Future<T>` and collected by `SetupTask`.
+`GPS` and `Wifi` expose `start()` and `stop()` futures. Event handlers are
+registered before startup:
 
-### Sequence diagram
+```cpp
+gps.onError(handleGpsError);
+wifi.onError(handleWifiError);
+gps.onFix([](const GPSFix& fix) {
+    wifi.request("POST", SERVER_URL, fix.toJson());
+});
 
-```
-setup()        SetupTask       GpsTask          WifiTask        Hardware
-  │               │               │                │                │
-  │  app.start()  │               │                │                │
-  │──────────────>│               │                │                │
-  │               │  _gps.start() │                │                │
-  │               │──────────────>│                │                │
-  │               │               │ onReceive(cb)  │                │
-  │               │               │────────────────────────────────>│  (UART2)
-  │               │               │               │                 │
-  │               │               │<── run() returns, task deleted ─┘
-  │               │               │                │
-  │               │  _wifi.start()│                │
-  │               │───────────────────────────────>│
-  │               │               │                │ WiFi.onEvent(cb)
-  │               │               │                │ WiFi.begin()
-  │               │               │                │
-  │               │               │                │<── run() returns, task deleted
-  │               │               │                │
-  │               │               │         [bytes arrive on UART2]
-  │               │               │<── onReceive() fires ──────────>│
-  │               │               │  gps.encode()  │                │
-  │               │               │  location.isValid() == true     │
-  │               │               │  result.set(fix)                │
-  │               │               │                │                │
-  │               │  [DHCP lease assigned]         │                │
-  │               │               │   GOT_IP event fires            │
-  │               │               │                │ result.set({true})
-  │               │               │                │                │
-  │    GpsFix fix = _gps.result.get(60s)           │                │
-  │               │<──────────────│                │                │
-  │               │               │                │                │
-  │    WifiCtx ctx = _wifi.result.get(15s)         │                │
-  │               │<──────────────────────────────>│                │
-  │               │               │                │                │
-  │               │  HTTPClient::GET(url)          │                │
-  │               │────────────────────────────────────────────────>│  (TCP)
-  │               │  Serial.printf("HTTP %d\n", code)               │
-  │               │               │                │                │
+auto wifiStarted = wifi.start();
+auto gpsStarted = gps.start();
 ```
 
-### Flow diagram
+GPS parsing/polling and HTTP run on separate threads. HTTP requests enter a
+bounded queue and are sent sequentially, so a slow request does not block GPS
+collection.
 
-```
-                     ┌─────────────────────────────────────────┐
-                     │               SetupTask                 │
-                     │                                         │
-  ┌──────────┐       │  ┌──────────┐         ┌──────────────┐  │
-  │  setup() │──────>│  │ GpsTask  │         │  WifiTask    │  │
-  └──────────┘       │  │ core 0   │         │  core 1      │  │
-                     │  │          │         │              │  │
-                     │  │onReceive │         │ WiFi.onEvent │  │
-                     │  │callback  │         │ callback     │  │
-                     │  └────┬─────┘         └──────┬───────┘  │
-                     │       │                      │          │
-                     │  [UART bytes]          [DHCP lease]     │
-                     │       │                      │          │
-                     │       ▼                      ▼          │
-                     │  Future<GpsFix>      Future<WifiCtx>    │
-                     │       │                      │          │
-                     │       └──────────┬───────────┘          │
-                     │                  │                      │
-                     │           get() blocks                  │
-                     │           (with timeout)                │
-                     │                  │                      │
-                     │         ┌────────┴────────┐             │
-                     │         │  both ready?    │             │
-                     │         └────────┬────────┘             │
-                     │            yes   │   no (timeout)       │
-                     │                  ▼        ▼             │
-                     │           HTTP GET     log error        │
-                     └─────────────────────────────────────────┘
+## Configuration
+
+Create `firmware/.env`:
+
+```dotenv
+WIFI_SSID=your-network
+WIFI_PASS=your-password
+SERVER_URL=http://your-server/api/event
 ```
 
-## Timeout behaviour
+Install dependencies:
 
-| Condition          | Timeout | Result                                   |
-| ------------------ | ------- | ---------------------------------------- |
-| No GPS fix         | 60 s    | `[setup] GPS timeout`                    |
-| WiFi not reachable | 15 s    | `[setup] WiFi timeout`                   |
-| HTTP error         | —       | `[setup] HTTP <code>` (negative = error) |
-
-## `Future<T>` semantics
-
-Single-use. One `set()`, one `get()`. `get()` blocks until `set()` is called or
-the timeout expires (returns zero-value struct on timeout). `ready()` consumes
-the token — do not call it before `get()`.
+```sh
+uv sync
+```
 
 ## Building
 
+The A7670G environment is the default:
+
 ```sh
-pio run -t upload
-pio device monitor -b 115200
+make build
+```
+
+Build specifically for the T-SIM7000G:
+
+```sh
+make build ENV=lilygo-t-sim7000g
+```
+
+Build both environments:
+
+```sh
+make build-all
+```
+
+Upload and monitor:
+
+```sh
+make upload ENV=lilygo-t-sim7000g
+make monitor PORT=/dev/ttyUSB0
 ```
