@@ -1,7 +1,6 @@
 .PHONY: build build-all upload monitor
 
-ENV ?= lilygo-t-a7670g
-PORT ?= /dev/ttyACM0
+ENV ?= lilygo-t-sim7000g
 
 build:
 	uv run --env-file .env platformio run -e $(ENV)
@@ -16,4 +15,4 @@ upload:
 	uv run --env-file .env platformio run -e $(ENV) --target upload
 
 monitor:
-	uv run pio device monitor -p $(PORT) -b 115200
+	uv run pio device monitor -b 115200

@@ -19,7 +19,6 @@
 
 struct WifiResponse {
     int code;
-    String body;
 };
 
 struct WifiHeader {
@@ -319,17 +318,18 @@ private:
         const int code = body.isEmpty()
             ? http.sendRequest(command.method)
             : http.sendRequest(command.method, body);
-        const String response_body = code >= 0 ? http.getString() : String();
+
+        // sendRequest() parses the HTTP status line. Do not read the response
+        // body: callers only use the status code, and waiting for a body adds
+        // unnecessary latency to the worker queue.
         http.end();
 
-        Serial.println(
-            "[wifi] response code=" + String(code) + " bytes=" +
-            String(response_body.length()));
+        Serial.println("[wifi] response code=" + String(code));
 
         if (code < 0)
             return tl::make_unexpected(
                 Error(HTTPClient::errorToString(code), code));
-        return WifiResponse{code, response_body};
+        return WifiResponse{code};
     }
 
     void emitError(const Error& error) {

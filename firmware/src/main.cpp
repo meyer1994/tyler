@@ -26,7 +26,7 @@ GPS gps;
 Wifi wifi(WIFI_SSID, WIFI_PASS);
 const WifiHeaders event_headers{
     {"Content-Type", "application/json"},
-    {"Connection", "close"},
+    {"Connection", " keep-alive"},
 };
 
 #if defined(TRACKOWS_GPS_SIM7000G)
