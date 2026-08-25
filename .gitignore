@@ -178,6 +178,9 @@ downloads/
 eggs/
 .eggs/
 lib/
+!firmware/lib/
+!firmware/lib/FreeRTOS-Cpp/
+!firmware/lib/FreeRTOS-Cpp/**
 lib64/
 parts/
 sdist/

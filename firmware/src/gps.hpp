@@ -9,18 +9,14 @@
 #else
 #include <TinyGPSPlus.h>
 #endif
+#include <FreeRTOS/Queue.hpp>
+#include <FreeRTOS/Task.hpp>
 #include <atomic>
 #include <functional>
-#include <future>
 #include <mutex>
-#include <stdexcept>
-#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <esp_pthread.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
 #include "./result.hpp"
 
 #if defined(TRACKOWS_GPS_SIM7000G)
@@ -35,6 +31,81 @@
 #define GPS_TX_PIN  21
 #define GPS_BAUD    9600
 #endif
+
+class GPSState {
+public:
+    enum Value : uint8_t {
+        Stopped,
+        Starting,
+        Running,
+        Stopping,
+        Failed,
+    };
+
+    constexpr GPSState(Value value = Stopped) : value_(value) {}
+    constexpr operator Value() const { return value_; }
+
+    const char* getName() const {
+        switch (value_) {
+            case Stopped:  return "stopped";
+            case Starting: return "starting";
+            case Running:  return "running";
+            case Stopping: return "stopping";
+            case Failed:   return "failed";
+        }
+        return "unknown";
+    }
+
+    friend constexpr bool operator==(GPSState lhs, GPSState rhs) {
+        return lhs.value_ == rhs.value_;
+    }
+
+    friend constexpr bool operator!=(GPSState lhs, GPSState rhs) {
+        return !(lhs == rhs);
+    }
+
+private:
+    Value value_;
+};
+
+class GPSFixState {
+public:
+    enum Value : uint8_t {
+        Unknown,
+        Searching,
+        Fixed,
+        Lost,
+    };
+
+    constexpr GPSFixState(Value value = Unknown) : value_(value) {}
+    constexpr operator Value() const { return value_; }
+
+    const char* getName() const {
+        switch (value_) {
+            case Unknown:   return "unknown";
+            case Searching: return "searching";
+            case Fixed:     return "fixed";
+            case Lost:      return "lost";
+        }
+        return "unknown";
+    }
+
+    friend constexpr bool operator==(GPSFixState lhs, GPSFixState rhs) {
+        return lhs.value_ == rhs.value_;
+    }
+
+    friend constexpr bool operator!=(GPSFixState lhs, GPSFixState rhs) {
+        return !(lhs == rhs);
+    }
+
+private:
+    Value value_;
+};
+
+static_assert(std::is_trivially_copyable<GPSState>::value,
+              "GPSState must remain atomic-safe");
+static_assert(std::is_trivially_copyable<GPSFixState>::value,
+              "GPSFixState must remain atomic-safe");
 
 struct GPSFix {
     double   lat;
@@ -85,23 +156,67 @@ static_assert(std::is_trivially_copyable<GPSFix>::value,
               "GPSFix must be safe to copy through a FreeRTOS queue");
 
 class GPS {
+private:
+    // ESP-IDF defines StackType_t as one byte, so these template arguments are
+    // stack sizes in bytes on ESP32.
+    class ReaderTask final : public FreeRTOS::StaticTask<8192> {
+    public:
+        explicit ReaderTask(GPS& owner)
+            : FreeRTOS::StaticTask<8192>(tskIDLE_PRIORITY, "gps_reader"),
+              owner_(owner) {}
+
+        void taskFunction() final {
+            for (;;) {
+                notifyTake(portMAX_DELAY);
+                setPriority(2);
+                owner_.readerLoop();
+                setPriority(tskIDLE_PRIORITY);
+                owner_.reader_done_.overwrite(true);
+            }
+        }
+
+    private:
+        GPS& owner_;
+    };
+
+    class DispatchTask final : public FreeRTOS::StaticTask<4096> {
+    public:
+        explicit DispatchTask(GPS& owner)
+            : FreeRTOS::StaticTask<4096>(tskIDLE_PRIORITY, "gps_events"),
+              owner_(owner) {}
+
+        void taskFunction() final {
+            for (;;) {
+                notifyTake(portMAX_DELAY);
+                setPriority(1);
+                owner_.dispatchLoop();
+                setPriority(tskIDLE_PRIORITY);
+                owner_.dispatch_done_.overwrite(true);
+            }
+        }
+
+    private:
+        GPS& owner_;
+    };
+
 public:
     using FixCallback = std::function<void(const GPSFix&)>;
     using ErrorCallback = std::function<void(const Error&)>;
+    using StateCallback =
+        std::function<void(GPSState previous, GPSState current)>;
+    using FixStateChangeCallback =
+        std::function<void(GPSFixState previous, GPSFixState current)>;
 
     GPS()
         : serial_(1),
 #if defined(TRACKOWS_GPS_SIM7000G)
           modem_(serial_),
 #endif
-          event_queue_(xQueueCreateStatic(
-              1, sizeof(Event), event_queue_storage_, &event_queue_buffer_)),
-          latest_queue_(xQueueCreateStatic(
-              1, sizeof(GPSFix), latest_queue_storage_, &latest_queue_buffer_)) {}
+          reader_task_(*this),
+          dispatch_task_(*this) {}
 
     ~GPS() {
-        auto stopped = stop();
-        if (stopped.valid()) stopped.wait();
+        (void)stop();
     }
 
     GPS(const GPS&) = delete;
@@ -123,122 +238,118 @@ public:
         return *this;
     }
 
-    // Start is synchronous internally, but returns a standard ready future so
-    // callers can use the same wait_for/get flow as other asynchronous APIs.
-    std::future<Result<bool>> start() {
-        std::promise<Result<bool>> promise;
-        auto future = promise.get_future();
-
-        std::unique_lock<std::mutex> lock(state_mutex_);
-        if (running_) {
-            promise.set_value(true);
-            return future;
+    GPS& onState(StateCallback callback) {
+        if (callback) {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            state_callbacks_.push_back(std::move(callback));
         }
+        return *this;
+    }
 
-        if (!event_queue_ || !latest_queue_) {
+    GPS& onFixStateChange(FixStateChangeCallback callback) {
+        if (callback) {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            fix_state_callbacks_.push_back(std::move(callback));
+        }
+        return *this;
+    }
+
+    Result<bool> start() {
+        std::unique_lock<std::mutex> lock(state_mutex_);
+        if (running_) return true;
+        if (state_ == GPSState::Starting || state_ == GPSState::Stopping)
+            return tl::make_unexpected(
+                Error("GPS state transition already in progress"));
+
+        GPSState previous_state = state_.exchange(GPSState::Starting);
+        lock.unlock();
+        emitStateChange(previous_state, GPSState::Starting);
+        lock.lock();
+
+        if (!event_queue_.isValid() || !latest_queue_.isValid() ||
+            !reader_done_.isValid() || !dispatch_done_.isValid()) {
             Error error("GPS queue initialization failed");
+            previous_state = state_.exchange(GPSState::Failed);
             lock.unlock();
             emitError(error);
-            promise.set_value(tl::make_unexpected(error));
-            return future;
+            emitStateChange(previous_state, GPSState::Failed);
+            return tl::make_unexpected(error);
         }
 
-        xQueueReset(event_queue_);
-        xQueueReset(latest_queue_);
+        event_queue_.reset();
+        latest_queue_.reset();
+        reader_done_.reset();
+        dispatch_done_.reset();
 
         auto hardware = startHardware();
         if (!hardware.has_value()) {
             Error error = hardware.error();
+            previous_state = state_.exchange(GPSState::Failed);
             lock.unlock();
             emitError(error);
-            promise.set_value(tl::make_unexpected(error));
-            return future;
+            emitStateChange(previous_state, GPSState::Failed);
+            return tl::make_unexpected(error);
         }
+
         running_ = true;
+        const GPSFixState previous_fix_state =
+            fix_state_.exchange(GPSFixState::Searching);
+        dispatch_task_.notifyGive();
+        reader_task_.notifyGive();
+        previous_state = state_.exchange(GPSState::Running);
+        lock.unlock();
 
-        try {
-            dispatch_thread_ = makeThread(
-                [this] { dispatchLoop(); }, "gps_events", 4096, 1);
-            reader_thread_ = makeThread(
-                [this] { readerLoop(); }, "gps_reader", 4096, 2);
-            promise.set_value(true);
-        } catch (const std::exception& exception) {
-            running_ = false;
-            if (reader_thread_.joinable()) reader_thread_.join();
-            if (dispatch_thread_.joinable()) {
-                Event stop{EventType::Stop, {}};
-                xQueueOverwrite(event_queue_, &stop);
-                dispatch_thread_.join();
-            }
-            stopHardware();
-
-            Error error(exception.what());
-            lock.unlock();
-            emitError(error);
-            promise.set_value(tl::make_unexpected(error));
-        }
-
-        return future;
+        emitFixStateChange(previous_fix_state, GPSFixState::Searching);
+        emitStateChange(previous_state, GPSState::Running);
+        return true;
     }
 
-    std::future<Result<bool>> stop() {
-        std::packaged_task<Result<bool>()> task([this]() -> Result<bool> {
-            std::lock_guard<std::mutex> lock(state_mutex_);
-            if (!running_.exchange(false)) return true;
+    Result<bool> stop() {
+        std::unique_lock<std::mutex> lock(state_mutex_);
+        if (!running_.exchange(false)) return true;
 
-            // Stop the producer before posting the sentinel so it cannot
-            // overwrite the stop event with one final fix.
-            if (reader_thread_.joinable()) reader_thread_.join();
+        GPSState previous_state = state_.exchange(GPSState::Stopping);
+        lock.unlock();
+        emitStateChange(previous_state, GPSState::Stopping);
 
-            Event stop{EventType::Stop, {}};
-            xQueueOverwrite(event_queue_, &stop);
-            if (dispatch_thread_.joinable()) dispatch_thread_.join();
-
-            stopHardware();
-            xQueueReset(event_queue_);
-            xQueueReset(latest_queue_);
-            return true;
-        });
-
-        auto future = task.get_future();
-        try {
-            auto thread = makeThread(
-                std::move(task), "gps_stop", 3072, 1);
-            thread.detach();
-        } catch (const std::exception& exception) {
-            Error error(exception.what());
-            emitError(error);
-
-            std::promise<Result<bool>> error_promise;
-            future = error_promise.get_future();
-            error_promise.set_value(tl::make_unexpected(error));
+        bool clean = true;
+        if (!reader_done_.receive(pdMS_TO_TICKS(15000))) {
+            emitError(Error("GPS reader did not stop"));
+            clean = false;
         }
-        return future;
+
+        const Event stop_event{EventType::Stop, {}};
+        event_queue_.overwrite(stop_event);
+        if (!dispatch_done_.receive(pdMS_TO_TICKS(2000))) {
+            emitError(Error("GPS dispatcher did not stop"));
+            clean = false;
+        }
+
+        lock.lock();
+        stopHardware();
+        event_queue_.reset();
+        latest_queue_.reset();
+
+        const GPSFixState previous_fix_state =
+            fix_state_.exchange(GPSFixState::Unknown);
+        previous_state = state_.exchange(GPSState::Stopped);
+        lock.unlock();
+
+        emitFixStateChange(previous_fix_state, GPSFixState::Unknown);
+        emitStateChange(previous_state, GPSState::Stopped);
+        if (!clean)
+            return tl::make_unexpected(Error("GPS stop incomplete"));
+        return true;
     }
 
-    std::future<Result<GPSFix>> fix() {
-        std::packaged_task<Result<GPSFix>()> task([this]() -> Result<GPSFix> {
-            while (running_) {
-                GPSFix fix{};
-                if (xQueuePeek(
-                        latest_queue_, &fix, pdMS_TO_TICKS(100)) == pdTRUE)
-                    return fix;
-            }
-            return tl::make_unexpected(Error("GPS stopped"));
-        });
+    Result<GPSFix> fix(uint32_t timeout_ms = 0) {
+        if (!running_)
+            return tl::make_unexpected(Error("GPS is not running"));
 
-        auto future = task.get_future();
-        try {
-            auto thread = makeThread(
-                std::move(task), "gps_fix", 2048, 1);
-            thread.detach();
-        } catch (const std::exception& exception) {
-            std::promise<Result<GPSFix>> error_promise;
-            future = error_promise.get_future();
-            error_promise.set_value(
-                tl::make_unexpected(Error(exception.what())));
-        }
-        return future;
+        auto current = latest_queue_.peek(pdMS_TO_TICKS(timeout_ms));
+        if (!current)
+            return tl::make_unexpected(Error("GPS fix unavailable"));
+        return *current;
     }
 
 private:
@@ -254,38 +365,6 @@ private:
 
     static_assert(std::is_trivially_copyable<Event>::value,
                   "GPS event must be safe to copy through a FreeRTOS queue");
-
-    template <typename Fn>
-    static std::thread makeThread(
-        Fn&& fn,
-        const char* name,
-        size_t stack_size,
-        size_t priority) {
-
-        esp_pthread_cfg_t previous{};
-        const bool had_previous = esp_pthread_get_cfg(&previous) == ESP_OK;
-        const esp_pthread_cfg_t restore =
-            had_previous ? previous : esp_pthread_get_default_config();
-
-        esp_pthread_cfg_t cfg = esp_pthread_get_default_config();
-        cfg.stack_size = stack_size;
-        cfg.prio = priority;
-        cfg.inherit_cfg = false;
-        cfg.thread_name = name;
-        cfg.pin_to_core = tskNO_AFFINITY;
-
-        if (esp_pthread_set_cfg(&cfg) != ESP_OK)
-            throw std::runtime_error("GPS thread configuration failed");
-
-        try {
-            std::thread thread(std::forward<Fn>(fn));
-            esp_pthread_set_cfg(&restore);
-            return thread;
-        } catch (...) {
-            esp_pthread_set_cfg(&restore);
-            throw;
-        }
-    }
 
     Result<bool> startHardware() {
 #if defined(TRACKOWS_GPS_SIM7000G)
@@ -326,9 +405,18 @@ private:
     }
 
     void publishFix(const GPSFix& fix) {
+        last_fix_ms_ = millis();
+        setFixState(GPSFixState::Fixed);
+
         const Event event{EventType::Fix, fix};
-        xQueueOverwrite(latest_queue_, &fix);
-        xQueueOverwrite(event_queue_, &event);
+        latest_queue_.overwrite(fix);
+        event_queue_.overwrite(event);
+    }
+
+    void checkFixTimeout() {
+        if (fix_state_ != GPSFixState::Fixed) return;
+        if (millis() - last_fix_ms_ < FIX_LOSS_TIMEOUT_MS) return;
+        setFixState(GPSFixState::Lost);
     }
 
     void readerLoop() {
@@ -368,9 +456,11 @@ private:
                     static_cast<uint8_t>(minute),
                     static_cast<uint8_t>(second),
                 });
+            } else {
+                checkFixTimeout();
             }
 
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            FreeRTOS::TaskBase::delay(pdMS_TO_TICKS(1000));
         }
 #else
         while (running_) {
@@ -396,19 +486,20 @@ private:
                     gps_.time.minute(),
                     gps_.time.second(),
                 });
+            } else {
+                checkFixTimeout();
             }
 
-            vTaskDelay(pdMS_TO_TICKS(20));
+            FreeRTOS::TaskBase::delay(pdMS_TO_TICKS(20));
         }
 #endif
     }
 
     void dispatchLoop() {
         for (;;) {
-            Event event{};
-            if (xQueueReceive(event_queue_, &event, portMAX_DELAY) != pdTRUE)
-                continue;
-            if (event.type == EventType::Stop) return;
+            auto event = event_queue_.receive(portMAX_DELAY);
+            if (!event) continue;
+            if (event->type == EventType::Stop) return;
 
             std::vector<FixCallback> callbacks;
             {
@@ -416,7 +507,7 @@ private:
                 callbacks = fix_callbacks_;
             }
             for (const auto& callback : callbacks)
-                callback(event.fix);
+                callback(event->fix);
         }
     }
 
@@ -430,6 +521,36 @@ private:
             callback(error);
     }
 
+    void emitStateChange(GPSState previous, GPSState current) {
+        if (previous == current) return;
+
+        std::vector<StateCallback> callbacks;
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            callbacks = state_callbacks_;
+        }
+        for (const auto& callback : callbacks)
+            callback(previous, current);
+    }
+
+    void emitFixStateChange(
+        GPSFixState previous, GPSFixState current) {
+        if (previous == current) return;
+
+        std::vector<FixStateChangeCallback> callbacks;
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            callbacks = fix_state_callbacks_;
+        }
+        for (const auto& callback : callbacks)
+            callback(previous, current);
+    }
+
+    void setFixState(GPSFixState current) {
+        const GPSFixState previous = fix_state_.exchange(current);
+        emitFixStateChange(previous, current);
+    }
+
     HardwareSerial serial_;
 #if defined(TRACKOWS_GPS_SIM7000G)
     TinyGsm modem_;
@@ -437,20 +558,25 @@ private:
     TinyGPSPlus gps_;
 #endif
 
-    StaticQueue_t event_queue_buffer_{};
-    uint8_t event_queue_storage_[sizeof(Event)]{};
-    QueueHandle_t event_queue_ = nullptr;
+    FreeRTOS::StaticQueue<Event, 1> event_queue_;
+    FreeRTOS::StaticQueue<GPSFix, 1> latest_queue_;
+    FreeRTOS::StaticQueue<bool, 1> reader_done_;
+    FreeRTOS::StaticQueue<bool, 1> dispatch_done_;
 
-    StaticQueue_t latest_queue_buffer_{};
-    uint8_t latest_queue_storage_[sizeof(GPSFix)]{};
-    QueueHandle_t latest_queue_ = nullptr;
+    ReaderTask reader_task_;
+    DispatchTask dispatch_task_;
+
+    static constexpr uint32_t FIX_LOSS_TIMEOUT_MS = 5000;
 
     std::atomic<bool> running_{false};
-    std::thread reader_thread_;
-    std::thread dispatch_thread_;
+    std::atomic<GPSState> state_{GPSState::Stopped};
+    std::atomic<GPSFixState> fix_state_{GPSFixState::Unknown};
+    std::atomic<uint32_t> last_fix_ms_{0};
     std::mutex state_mutex_;
 
     std::mutex callback_mutex_;
     std::vector<FixCallback> fix_callbacks_;
     std::vector<ErrorCallback> error_callbacks_;
+    std::vector<StateCallback> state_callbacks_;
+    std::vector<FixStateChangeCallback> fix_state_callbacks_;
 };
