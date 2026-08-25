@@ -49,7 +49,7 @@ export default defineNuxtConfig({
     server: {
       allowedHosts: [
         'free-loudly-dingo.ngrok-free.app',
-        'blanket-adware-plays-kidney.trycloudflare.com',
+        '*.trycloudflare.com',
       ],
     },
   },
@@ -60,6 +60,7 @@ export default defineNuxtConfig({
   },
 
   echarts: {
+    renderer: 'canvas',
     charts: ['LineChart'],
     components: ['GridComponent', 'TitleComponent', 'TooltipComponent'],
   },

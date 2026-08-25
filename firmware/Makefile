@@ -16,4 +16,4 @@ upload:
 	uv run --env-file .env platformio run -e $(ENV) --target upload
 
 monitor:
-	screen -L $(PORT) 115200
+	uv run pio device monitor -p $(PORT) -b 115200

@@ -13,6 +13,7 @@ type Props = {
 }
 
 const props = defineProps<Props>()
+const initOptions = { renderer: 'canvas' as const }
 
 use([
   LineChart,
@@ -28,7 +29,8 @@ const options = computed<ECOption>(() => ({
     bottom: 20, // Small space for X-axis labels
     left: 10, // Minimal spacing at left
     right: 10, // Minimal spacing at right
-    containLabel: true, // Essential: keeps axis labels inside the div
+    outerBoundsMode: 'same',
+    outerBoundsContain: 'axisLabel',
   },
   tooltip: {
     trigger: 'axis',
@@ -59,6 +61,7 @@ const options = computed<ECOption>(() => ({
 <template>
   <VChart
     :option="options"
+    :init-options="initOptions"
     autoresize
   />
 </template>
