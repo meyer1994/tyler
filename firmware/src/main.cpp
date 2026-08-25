@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include <esp_task_wdt.h>
+#if defined(TRACKOWS_GPS_SIM7000G)
+#include <Ticker.h>
+#endif
 
 #include "./result.hpp"
 #include "./gps.hpp"
@@ -26,6 +29,12 @@ const WifiHeaders event_headers{
     {"Connection", "close"},
 };
 
+#if defined(TRACKOWS_GPS_SIM7000G)
+constexpr uint8_t RESPONSE_LED_PIN = 12;
+constexpr uint32_t RESPONSE_LED_DURATION_MS = 100;
+Ticker response_led_timer;
+#endif
+
 void stopServices() {
     (void)gps.stop();
     (void)wifi.stop();
@@ -42,10 +51,26 @@ void setup() {
     delay(2000);
     esp_task_wdt_deinit();
 
+#if defined(TRACKOWS_GPS_SIM7000G)
+    pinMode(RESPONSE_LED_PIN, OUTPUT);
+    digitalWrite(RESPONSE_LED_PIN, HIGH);  // Active-low LED: start off.
+#endif
+
     // Register every hook before starting either service.
     wifi.onError([](const Error& error) {
         Serial.println("[wifi] error: " + error.message);
     });
+
+#if defined(TRACKOWS_GPS_SIM7000G)
+    wifi.onResponse([](const WifiResponse& response) {
+        if (response.code < 200 || response.code >= 300) return;
+
+        digitalWrite(RESPONSE_LED_PIN, LOW);
+        response_led_timer.once_ms(RESPONSE_LED_DURATION_MS, [] {
+            digitalWrite(RESPONSE_LED_PIN, HIGH);
+        });
+    });
+#endif
 
     gps.onError([](const Error& error) {
         Serial.println("[gps] error: " + error.message);
