@@ -16,7 +16,6 @@ const query = z.object({
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, query.parse)
-  console.log(body)
 
   const task = async () => {
     const [item] = await db
