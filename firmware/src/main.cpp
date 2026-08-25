@@ -42,6 +42,8 @@ void stopServices() {
 void setup() {
     Serial.begin(115200);
     Serial.println("[main] starting up...");
+    Serial.println("[main] WiFi SSID: " + String(WIFI_SSID));
+    Serial.println("[main] WiFi password: " + String(WIFI_PASS));
 
     delay(2000);
     esp_task_wdt_deinit();
