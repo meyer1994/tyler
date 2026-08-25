@@ -49,7 +49,7 @@ export default defineNuxtConfig({
     server: {
       allowedHosts: [
         'free-loudly-dingo.ngrok-free.app',
-        '*.trycloudflare.com',
+        'recorder-freely-anna-sci.trycloudflare.com',
       ],
     },
   },
