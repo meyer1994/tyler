@@ -6,6 +6,11 @@ type Item = AppRouterOutputs['events']['list']
 type Row = Item['features'][number]
 type Keys = keyof Row['properties']
 
+const { $trpc } = useNuxtApp()
+const rangeMax = Date.now()
+const rangeMin = rangeMax - 30 * 60 * 1000
+const range = ref<[number, number]>([rangeMin, rangeMax])
+const debouncedRange = useDebounce(range, 300)
 const selected = ref<'hdop' | 'sat' | 'speed' | 'heading' | 'alt'>('hdop')
 
 const MAP_ID_TO_LABEL: Record<typeof selected.value, string> = {
@@ -56,10 +61,19 @@ const table = useTemplateRef('table')
 <template>
   <AsyncFetch
     v-slot="{ data, status, refresh }"
-    fetch-key="events"
-    :handler="async () => await $trpc.events.list.query()"
+    :fetch-key="['events-list', debouncedRange.join(',')]"
+    :handler="async () => await $trpc.events.list.query({
+      after: new Date(debouncedRange[0]).toISOString(),
+      before: new Date(debouncedRange[1]).toISOString(),
+    })"
   >
     <div class="h-full w-full p-4 flex flex-col gap-6">
+      <EventsTimeSlider
+        v-model="range"
+        :min="rangeMin"
+        :max="rangeMax"
+      />
+
       <UFieldGroup>
         <UButton
           v-for="label, key in MAP_ID_TO_LABEL"
