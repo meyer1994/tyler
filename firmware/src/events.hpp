@@ -229,19 +229,6 @@ ESP_EVENT_DECLARE_BASE(HTTP_EVENT_BASE);
 ESP_EVENT_DECLARE_BASE(NETWORK_EVENT_BASE);
 ESP_EVENT_DECLARE_BASE(APP_EVENT_BASE);
 
-template <> struct EventTraits<GpsEvent> {
-    static esp_event_base_t base() { return GPS_EVENT_BASE; }
-};
-template <> struct EventTraits<HttpEvent> {
-    static esp_event_base_t base() { return HTTP_EVENT_BASE; }
-};
-template <> struct EventTraits<NetworkEvent> {
-    static esp_event_base_t base() { return NETWORK_EVENT_BASE; }
-};
-template <> struct EventTraits<AppEvent> {
-    static esp_event_base_t base() { return APP_EVENT_BASE; }
-};
-
 using GpsEmitter = EventEmitter<GpsEvent>;
 using HttpEmitter = EventEmitter<HttpEvent>;
 using NetworkEmitter = EventEmitter<NetworkEvent>;

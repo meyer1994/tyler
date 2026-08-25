@@ -23,10 +23,10 @@
 
 namespace {
 
-GpsEmitter gps_events("gps_events", 16, 4096, 1);
-HttpEmitter http_events("http_events", 24, 4096, 1);
-NetworkEmitter network_events("network_events", 8, 4096, 1);
-AppEmitter app_events("app_events", 16, 4096, 1);
+GpsEmitter gps_events(GPS_EVENT_BASE);
+HttpEmitter http_events(HTTP_EVENT_BASE);
+NetworkEmitter network_events(NETWORK_EVENT_BASE);
+AppEmitter app_events(APP_EVENT_BASE);
 
 GPS gps(gps_events);
 NetworkService network(network_events, WIFI_SSID, WIFI_PASS);
@@ -51,10 +51,10 @@ bool startEventLoops() {
     };
 
     const Loop loops[]{
-        {"gps", gps_events.start()},
-        {"http", http_events.start()},
-        {"network", network_events.start()},
-        {"app", app_events.start()},
+        {"gps", gps_events.begin("gps", 16, 4096, 5)},
+        {"http", http_events.begin("http", 24, 4096, 5)},
+        {"network", network_events.begin("network", 8, 4096, 5)},
+        {"app", app_events.begin("app", 16, 4096, 5)},
     };
     for (const auto& loop : loops) {
         if (loop.result == ESP_OK) continue;
@@ -73,7 +73,7 @@ void relayAppError(const EventError& error, void* context) {
 
 void registerHandlers() {
     (void)app_events.on<AppEvent::Started>(
-        [](const NoPayload&, void*) {
+        [](void*) {
             Serial.println("[main] streaming every GPS fix");
         });
 
