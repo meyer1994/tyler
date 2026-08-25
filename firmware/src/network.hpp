@@ -27,9 +27,6 @@ public:
     Result<bool> start() {
         std::lock_guard<std::mutex> lock(mutex_);
         if (state_ == NetworkState::Connected) return true;
-        if (!events_.started())
-            return tl::make_unexpected(
-                Error("network event loop is not started"));
         if (ssid_.isEmpty())
             return tl::make_unexpected(Error("WiFi is not configured"));
 

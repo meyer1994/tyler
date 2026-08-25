@@ -107,7 +107,7 @@ void registerHandlers() {
             Serial.println("[gps] fix: " + fix.toJson());
             auto* events = static_cast<HttpEmitter*>(context);
             const esp_err_t result =
-                events->emit<HttpEvent::PostLocation>({fix});
+                events->emit<HttpEvent::PostLocation>({fix}, 0);
             if (result != ESP_OK)
                 Serial.println(
                     "[gps] HTTP event dropped: " +

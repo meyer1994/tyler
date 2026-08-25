@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
-#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -47,9 +46,7 @@ public:
     explicit EventEmitter(esp_event_base_t base)
         : base_(base) {}
 
-    ~EventEmitter() {
-        if (loop_) (void)end();
-    }
+    ~EventEmitter() = default;
 
     EventEmitter(const EventEmitter&) = delete;
     EventEmitter& operator=(const EventEmitter&) = delete;
@@ -60,28 +57,19 @@ public:
         uint32_t stack_size = 4096,
         UBaseType_t priority = 5,
         BaseType_t core = tskNO_AFFINITY) {
-        if (loop_) return ESP_ERR_INVALID_STATE;
-
         esp_event_loop_args_t args{};
         args.queue_size = static_cast<int32_t>(queue_size);
         args.task_name = task_name;
         args.task_priority = priority;
         args.task_stack_size = stack_size;
         args.task_core_id = core;
-
         return esp_event_loop_create(&args, &loop_);
     }
 
     esp_err_t end() {
-        if (!loop_) return ESP_ERR_INVALID_STATE;
-
         const esp_err_t result = esp_event_loop_delete(loop_);
         loop_ = nullptr;
         return result;
-    }
-
-    bool started() const {
-        return loop_ != nullptr;
     }
 
     template <EventEnum E>
@@ -91,15 +79,11 @@ public:
         uint32_t milliseconds,
         AfterHandler handler,
         void* context = nullptr) {
-        if (!loop_) return ESP_ERR_INVALID_STATE;
-        if (!handler) return ESP_ERR_INVALID_ARG;
-
-        auto* call = new (std::nothrow) AfterCall{
+        auto* call = new AfterCall{
             nullptr,
             [handler, context] {
                 handler(context);
             }};
-        if (!call) return ESP_ERR_NO_MEM;
 
         esp_timer_create_args_t args{};
         args.callback = &timer_callback;
@@ -107,17 +91,10 @@ public:
         args.dispatch_method = ESP_TIMER_TASK;
         args.name = "emitter_after";
 
-        esp_err_t result = esp_timer_create(&args, &call->timer);
-        if (result == ESP_OK) {
-            result = esp_timer_start_once(
-                call->timer,
-                static_cast<uint64_t>(milliseconds) * 1000ULL);
-        }
-        if (result != ESP_OK) {
-            if (call->timer) (void)esp_timer_delete(call->timer);
-            delete call;
-        }
-        return result;
+        (void)esp_timer_create(&args, &call->timer);
+        return esp_timer_start_once(
+            call->timer,
+            static_cast<uint64_t>(milliseconds) * 1000ULL);
     }
 
     template <EventEnum E>
@@ -132,23 +109,17 @@ public:
             sizeof(Handler<E>) <= HandlerStorageSize,
             "HandlerStorageSize is too small");
 
-        if (!loop_) return ESP_ERR_INVALID_STATE;
-        if (!handler) return ESP_ERR_INVALID_ARG;
-        if (handler_count_ >= MaxHandlers) return ESP_ERR_NO_MEM;
-
-        Slot& slot = slots_[handler_count_];
+        Slot& slot = slots_[handler_count_++];
         slot.context = context;
         slot.invoke = &invoke<E>;
         std::memcpy(slot.handler.data(), &handler, sizeof(handler));
 
-        const esp_err_t result = esp_event_handler_register_with(
+        return esp_event_handler_register_with(
             loop_,
             base_,
             static_cast<int32_t>(E),
             &trampoline,
             &slot);
-        if (result == ESP_OK) ++handler_count_;
-        return result;
     }
 
     template <
@@ -164,7 +135,6 @@ public:
             std::is_trivially_copyable<Payload>::value,
             "Event payload must be trivially copyable");
 
-        if (!loop_) return ESP_ERR_INVALID_STATE;
         return esp_event_post_to(
             loop_,
             base_,
@@ -180,7 +150,6 @@ public:
             std::is_same<EventPayloadT<E>, NoPayload>::value,
             int>::type = 0>
     esp_err_t emit(TickType_t timeout = portMAX_DELAY) {
-        if (!loop_) return ESP_ERR_INVALID_STATE;
         return esp_event_post_to(
             loop_,
             base_,
@@ -200,14 +169,10 @@ private:
         auto* call = static_cast<AfterCall*>(argument);
         auto handler = std::move(call->handler);
 
-        // One-shot timers are inactive when their callback starts. Delete the
-        // timer and closure before invoking user code so it can schedule a new
-        // callback without consuming a permanent timer slot.
         (void)esp_timer_delete(call->timer);
         delete call;
 
-        // This runs on the ESP timer task. Callbacks must be short and
-        // non-blocking; emit events or queue work for longer operations.
+        // Runs on the ESP timer task. Keep callbacks short and non-blocking.
         handler();
     }
 

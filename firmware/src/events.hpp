@@ -171,6 +171,7 @@ struct NetworkAddress {
 };
 
 enum class GpsEvent : int32_t {
+    Poll,
     Fix,
     Error,
     StateChanged,
@@ -194,6 +195,7 @@ enum class AppEvent : int32_t {
     Error,
 };
 
+template <> struct EventPayload<GpsEvent::Poll> { using type = NoPayload; };
 template <> struct EventPayload<GpsEvent::Fix> { using type = GPSFix; };
 template <> struct EventPayload<GpsEvent::Error> { using type = EventError; };
 template <> struct EventPayload<GpsEvent::StateChanged> {

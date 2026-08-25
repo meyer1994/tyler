@@ -62,24 +62,14 @@ public:
     Result<bool> start() {
         std::lock_guard<std::mutex> lock(state_mutex_);
         if (running_) return true;
-        if (!events_.started())
-            return tl::make_unexpected(Error("HTTP event loop is not started"));
         if (server_url_.isEmpty())
             return tl::make_unexpected(Error("HTTP server URL is empty"));
         if (!requests_.isValid() || !worker_done_.isValid())
             return tl::make_unexpected(Error("HTTP queue initialization failed"));
 
-        if (!bound_) {
-            const esp_err_t result = events_.on<HttpEvent::PostLocation>(
-                &HttpService::enqueueLocation,
-                this);
-            if (result != ESP_OK)
-                return tl::make_unexpected(Error(
-                    "HTTP event registration failed: " +
-                    String(esp_err_to_name(result)),
-                    result));
-            bound_ = true;
-        }
+        (void)events_.on<HttpEvent::PostLocation>(
+            &HttpService::enqueueLocation,
+            this);
 
         requests_.reset();
         worker_done_.reset();
@@ -198,5 +188,4 @@ private:
     std::atomic<bool> running_{false};
     std::atomic<bool> stop_requested_{false};
     std::mutex state_mutex_;
-    bool bound_ = false;
 };
