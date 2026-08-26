@@ -1,13 +1,19 @@
 #include <Arduino.h>
 #include <esp_task_wdt.h>
-#if defined(TRACKOWS_GPS_SIM7000G)
-#include <Ticker.h>
-#endif
 
 #include "./events.hpp"
 #include "./gps.hpp"
 #include "./http.hpp"
 #include "./network.hpp"
+
+#if defined(TRACKOWS_BOARD_SIM7000G)
+#include "./gps/sim7000g.hpp"
+#include <Ticker.h>
+using GpsBackendImplementation = Sim7000GpsBackend;
+#else
+#include "./gps/external.hpp"
+using GpsBackendImplementation = ExternalGpsBackend;
+#endif
 
 #ifndef WIFI_SSID
 #error "WIFI_SSID is not defined"
@@ -23,13 +29,14 @@
 
 namespace {
 
+GpsBackendImplementation gps_backend;
 EventEmitter events(5);
 
-GPS gps(events);
+GPS gps(events, gps_backend);
 NetworkService network(events, WIFI_SSID, WIFI_PASS);
 HttpService http(events, SERVER_URL);
 
-#if defined(TRACKOWS_GPS_SIM7000G)
+#if defined(TRACKOWS_BOARD_SIM7000G)
 constexpr uint8_t RESPONSE_LED_PIN = 12;
 constexpr uint32_t RESPONSE_LED_DURATION_MS = 100;
 Ticker response_led_timer;
@@ -82,7 +89,7 @@ void registerHandlers() {
     Serial.println(
         "[event] http.response: " + String(response.code));
 
-#if defined(TRACKOWS_GPS_SIM7000G)
+#if defined(TRACKOWS_BOARD_SIM7000G)
     if (response.code < 200 || response.code >= 300) return;
     digitalWrite(RESPONSE_LED_PIN, LOW);
     response_led_timer.once_ms(
@@ -130,7 +137,7 @@ void setup() {
   delay(2000);
   esp_task_wdt_deinit();
 
-#if defined(TRACKOWS_GPS_SIM7000G)
+#if defined(TRACKOWS_BOARD_SIM7000G)
   pinMode(RESPONSE_LED_PIN, OUTPUT);
   digitalWrite(RESPONSE_LED_PIN, HIGH);  // Active-low LED: start off.
 #endif

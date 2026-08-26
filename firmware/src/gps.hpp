@@ -1,31 +1,23 @@
 #pragma once
 
-#include <Arduino.h>
-#if defined(TRACKOWS_GPS_SIM7000G)
-#include <TinyGsmClient.h>
-#else
-#include <TinyGPSPlus.h>
-#endif
 #include <FreeRTOS/Queue.hpp>
 #include <FreeRTOS/Task.hpp>
 #include <atomic>
 #include <mutex>
+#include <optional>
 
 #include "./events.hpp"
 #include "./result.hpp"
 
-#if defined(TRACKOWS_GPS_SIM7000G)
-#define GPS_MODEM_RX_PIN      26
-#define GPS_MODEM_TX_PIN      27
-#define GPS_MODEM_DTR_PIN     25
-#define GPS_MODEM_PWRKEY_PIN   4
-#define GPS_MODEM_BAUD    115200
-#define GPS_MODEM_ENABLE_GPIO 48
-#else
-#define GPS_RX_PIN  22
-#define GPS_TX_PIN  21
-#define GPS_BAUD    9600
-#endif
+class GpsBackend {
+public:
+    virtual ~GpsBackend() = default;
+
+    virtual Result<bool> start() = 0;
+    virtual void stop() = 0;
+    virtual std::optional<GPSFix> poll() = 0;
+    virtual uint32_t pollIntervalMs() const = 0;
+};
 
 class GPS {
 private:
@@ -44,14 +36,10 @@ private:
     };
 
 public:
-    explicit GPS(EventEmitter& events)
+    GPS(EventEmitter& events, GpsBackend& backend)
         : events_(events),
-          serial_(1)
-#if defined(TRACKOWS_GPS_SIM7000G)
-          , modem_(serial_)
-#endif
-          , gps_task_(*this)
-    {}
+          backend_(backend),
+          gps_task_(*this) {}
 
     ~GPS() { (void)stop(); }
 
@@ -62,7 +50,7 @@ public:
         if (!poll_queue_.isValid())
             return tl::make_unexpected(Error("GPS queue initialization failed"));
 
-        auto hardware = startHardware();
+        auto hardware = backend_.start();
         if (!hardware.has_value()) {
             state_ = GPSState::Failed;
             emitError(hardware.error());
@@ -88,8 +76,9 @@ public:
         poll_queue_.sendToBack(true, 0);
         {
             std::lock_guard<std::mutex> hardware_lock(hardware_mutex_);
-            stopHardware();
+            backend_.stop();
         }
+
         const GPSFixState previous_fix_state = fix_state_.exchange(
             GPSFixState::Unknown);
         const GPSState previous_state = state_;
@@ -108,117 +97,18 @@ private:
             while (running_) {
                 pollOnce();
                 if (!running_) break;
-                (void)poll_queue_.receive(pdMS_TO_TICKS(POLL_INTERVAL_MS));
+                (void)poll_queue_.receive(
+                    pdMS_TO_TICKS(backend_.pollIntervalMs()));
             }
         }
-    }
-
-    Result<bool> startHardware() {
-#if defined(TRACKOWS_GPS_SIM7000G)
-        pinMode(GPS_MODEM_DTR_PIN, OUTPUT);
-        digitalWrite(GPS_MODEM_DTR_PIN, LOW);
-
-        pinMode(GPS_MODEM_PWRKEY_PIN, OUTPUT);
-        digitalWrite(GPS_MODEM_PWRKEY_PIN, LOW);
-        delay(100);
-        digitalWrite(GPS_MODEM_PWRKEY_PIN, HIGH);
-        delay(1000);
-        digitalWrite(GPS_MODEM_PWRKEY_PIN, LOW);
-
-        serial_.begin(
-            GPS_MODEM_BAUD, SERIAL_8N1,
-            GPS_MODEM_RX_PIN, GPS_MODEM_TX_PIN);
-        delay(3000);
-
-        bool responding = false;
-        for (int attempt = 0; attempt < 30 && !responding; ++attempt)
-            responding = modem_.testAT(1000);
-        if (!responding)
-            return tl::make_unexpected(Error("SIM7000G is not responding"));
-
-        if (!modem_.enableGPS(GPS_MODEM_ENABLE_GPIO, 1))
-            return tl::make_unexpected(Error("SIM7000G GNSS enable failed"));
-#else
-        serial_.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-#endif
-        return true;
-    }
-
-    void stopHardware() {
-#if defined(TRACKOWS_GPS_SIM7000G)
-        modem_.disableGPS(GPS_MODEM_ENABLE_GPIO, 0);
-#endif
-        serial_.end();
     }
 
     void pollOnce() {
-        {
-            std::lock_guard<std::mutex> hardware_lock(hardware_mutex_);
-            if (!running_) return;
+        std::lock_guard<std::mutex> hardware_lock(hardware_mutex_);
+        if (!running_) return;
 
-#if defined(TRACKOWS_GPS_SIM7000G)
-            uint8_t status = 0;
-            float lat = 0;
-            float lon = 0;
-            float speed_knots = 0;
-            float altitude = 0;
-            float hdop = 0;
-            int visible_satellites = 0;
-            int used_satellites = 0;
-            int year = 0;
-            int month = 0;
-            int day = 0;
-            int hour = 0;
-            int minute = 0;
-            int second = 0;
-
-            if (modem_.getGPS(
-                    &status, &lat, &lon, &speed_knots, &altitude,
-                    &visible_satellites, &used_satellites, &hdop,
-                    &year, &month, &day, &hour, &minute, &second)) {
-                publishFix(GPSFix{
-                    lat,
-                    lon,
-                    altitude,
-                    speed_knots * 1.852,
-                    0.0,
-                    hdop,
-                    static_cast<uint32_t>(used_satellites),
-                    static_cast<uint16_t>(year),
-                    static_cast<uint8_t>(month),
-                    static_cast<uint8_t>(day),
-                    static_cast<uint8_t>(hour),
-                    static_cast<uint8_t>(minute),
-                    static_cast<uint8_t>(second),
-                });
-            }
-#else
-            bool updated = false;
-            while (serial_.available()) {
-                gps_.encode(serial_.read());
-                updated = updated || gps_.location.isUpdated();
-            }
-
-            if (updated && gps_.location.isValid()) {
-                publishFix(GPSFix{
-                    gps_.location.lat(),
-                    gps_.location.lng(),
-                    gps_.altitude.meters(),
-                    gps_.speed.kmph(),
-                    gps_.course.deg(),
-                    gps_.hdop.hdop(),
-                    gps_.satellites.value(),
-                    gps_.date.year(),
-                    gps_.date.month(),
-                    gps_.date.day(),
-                    gps_.time.hour(),
-                    gps_.time.minute(),
-                    gps_.time.second(),
-                });
-            }
-#endif
-        }
-
+        auto fix = backend_.poll();
+        if (fix) publishFix(*fix);
     }
 
     void publishFix(const GPSFix& fix) {
@@ -239,7 +129,9 @@ private:
         GPSFixState previous,
         GPSFixState current) {
         if (previous == current) return;
-        events_.emit(GpsEvent::FixStateChanged, GPSFixStateChange{previous, current});
+        events_.emit(
+            GpsEvent::FixStateChanged,
+            GPSFixStateChange{previous, current});
     }
 
     void setFixState(GPSFixState current) {
@@ -248,18 +140,7 @@ private:
     }
 
     EventEmitter& events_;
-    HardwareSerial serial_;
-#if defined(TRACKOWS_GPS_SIM7000G)
-    TinyGsm modem_;
-#else
-    TinyGPSPlus gps_;
-#endif
-
-#if defined(TRACKOWS_GPS_SIM7000G)
-    static constexpr uint32_t POLL_INTERVAL_MS = 1000;
-#else
-    static constexpr uint32_t POLL_INTERVAL_MS = 20;
-#endif
+    GpsBackend& backend_;
     FreeRTOS::StaticQueue<bool, 1> poll_queue_;
     std::atomic<bool> running_{false};
     GPSState state_{GPSState::Stopped};
