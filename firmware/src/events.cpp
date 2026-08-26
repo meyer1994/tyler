@@ -1,6 +1,1 @@
-#include "./events.hpp"
-
-ESP_EVENT_DEFINE_BASE(GPS_EVENT_BASE);
-ESP_EVENT_DEFINE_BASE(HTTP_EVENT_BASE);
-ESP_EVENT_DEFINE_BASE(NETWORK_EVENT_BASE);
-ESP_EVENT_DEFINE_BASE(APP_EVENT_BASE);
+// Event names and dispatch are implemented by EventEmitter in emitter.hpp.

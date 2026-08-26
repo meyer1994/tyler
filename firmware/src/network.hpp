@@ -12,7 +12,7 @@
 class NetworkService {
 public:
     NetworkService(
-        NetworkEmitter& events,
+        EventEmitter& events,
         String ssid,
         String password)
         : events_(events),
@@ -68,7 +68,7 @@ public:
             address.address,
             WiFi.localIP().toString().c_str(),
             sizeof(address.address));
-        (void)events_.emit<NetworkEvent::AddressAcquired>(address);
+        events_.emit(NetworkEvent::AddressAcquired, address);
         return true;
     }
 
@@ -91,14 +91,14 @@ private:
     void setState(NetworkState current) {
         const NetworkState previous = state_.exchange(current);
         if (previous == current) return;
-        (void)events_.emit<NetworkEvent::StateChanged>({previous, current});
+        events_.emit(NetworkEvent::StateChanged, NetworkStateChange{previous, current});
     }
 
     void emitError(const Error& error) {
-        (void)events_.emit<NetworkEvent::Error>(eventError(error));
+        events_.emit(NetworkEvent::Error, eventError(error));
     }
 
-    NetworkEmitter& events_;
+    EventEmitter& events_;
     String ssid_;
     String password_;
     static constexpr time_t MINIMUM_VALID_TIME = 1704067200;  // 2024-01-01

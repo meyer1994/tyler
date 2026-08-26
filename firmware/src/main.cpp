@@ -23,14 +23,11 @@
 
 namespace {
 
-GpsEmitter gps_events(GPS_EVENT_BASE);
-HttpEmitter http_events(HTTP_EVENT_BASE);
-NetworkEmitter network_events(NETWORK_EVENT_BASE);
-AppEmitter app_events(APP_EVENT_BASE);
+EventEmitter events(5);
 
-GPS gps(gps_events);
-NetworkService network(network_events, WIFI_SSID, WIFI_PASS);
-HttpService http(http_events, SERVER_URL);
+GPS gps(events);
+NetworkService network(events, WIFI_SSID, WIFI_PASS);
+HttpService http(events, SERVER_URL);
 
 #if defined(TRACKOWS_GPS_SIM7000G)
 constexpr uint8_t RESPONSE_LED_PIN = 12;
@@ -39,153 +36,136 @@ Ticker response_led_timer;
 #endif
 
 void stopServices() {
-    (void)gps.stop();
-    (void)http.stop();
-    (void)network.stop();
-}
-
-bool startEventLoops() {
-    struct Loop {
-        const char* name;
-        esp_err_t result;
-    };
-
-    const Loop loops[]{
-        {"gps", gps_events.begin("gps", 16, 4096, 5)},
-        {"http", http_events.begin("http", 24, 4096, 5)},
-        {"network", network_events.begin("network", 8, 4096, 5)},
-        {"app", app_events.begin("app", 16, 4096, 5)},
-    };
-    for (const auto& loop : loops) {
-        if (loop.result == ESP_OK) continue;
-        Serial.println(
-            "[main] failed to start " + String(loop.name) +
-            " event loop: " + esp_err_to_name(loop.result));
-        return false;
-    }
-    return true;
-}
-
-void relayAppError(const EventError& error, void* context) {
-    auto* events = static_cast<AppEmitter*>(context);
-    (void)events->emit<AppEvent::Error>(error);
+  (void)gps.stop();
+  (void)http.stop();
+  (void)network.stop();
 }
 
 void registerHandlers() {
-    (void)app_events.on<AppEvent::Started>(
-        [](void*) {
-            Serial.println("[main] streaming every GPS fix");
-        });
+  events.on(GpsEvent::Error, [](void* data) {
+    const auto& error = *static_cast<EventError*>(data);
+    Serial.println(
+        "[event] gps.error (" + String(error.code) + "): " +
+        error.message);
+  });
 
-    (void)app_events.on<AppEvent::Error>(
-        [](const EventError& error, void*) {
-            Serial.println(
-                "[app] error (" + String(error.code) + "): " +
-                error.message);
-        });
+  events.on(GpsEvent::StateChanged, [](void* data) {
+    const auto& state = *static_cast<GPSStateChange*>(data);
+    Serial.println(
+        "[event] gps.state_changed: " +
+        String(state.previous.getName()) + " -> " +
+        state.current.getName());
+  });
 
-    (void)gps_events.on<GpsEvent::Error>(relayAppError, &app_events);
-    (void)http_events.on<HttpEvent::Error>(relayAppError, &app_events);
-    (void)network_events.on<NetworkEvent::Error>(relayAppError, &app_events);
+  events.on(GpsEvent::FixStateChanged, [](void* data) {
+    const auto& state = *static_cast<GPSFixStateChange*>(data);
+    Serial.println(
+        "[event] gps.fix_state_changed: " +
+        String(state.previous.getName()) + " -> " +
+        state.current.getName());
+  });
 
-    (void)gps_events.on<GpsEvent::StateChanged>(
-        [](const GPSStateChange& state, void*) {
-            Serial.println(
-                "[gps] state: " + String(state.previous.getName()) +
-                " -> " + state.current.getName());
-        });
+  events.on(GpsEvent::Fix, [](void* data) {
+    const auto& fix = *static_cast<GPSFix*>(data);
+    Serial.println("[event] gps.fix: " + fix.toJson());
 
-    (void)gps_events.on<GpsEvent::FixStateChanged>(
-        [](const GPSFixStateChange& state, void*) {
-            Serial.println(
-                "[gps] fix state: " + String(state.previous.getName()) +
-                " -> " + state.current.getName());
-        });
+    if (!events.emit(HttpEvent::PostLocation, HttpPostLocation{fix}))
+      Serial.println("[event] http.post_location dropped");
+  });
 
-    (void)gps_events.on<GpsEvent::Fix>(
-        [](const GPSFix& fix, void* context) {
-            Serial.println("[gps] fix: " + fix.toJson());
-            auto* events = static_cast<HttpEmitter*>(context);
-            const esp_err_t result =
-                events->emit<HttpEvent::PostLocation>({fix}, 0);
-            if (result != ESP_OK)
-                Serial.println(
-                    "[gps] HTTP event dropped: " +
-                    String(esp_err_to_name(result)));
-        },
-        &http_events);
+  events.on(HttpEvent::PostLocation, [](void*) {
+    Serial.println("[event] http.post_location");
+  });
 
-    (void)network_events.on<NetworkEvent::StateChanged>(
-        [](const NetworkStateChange& state, void*) {
-            Serial.println(
-                "[network] state: " +
-                String(static_cast<int>(state.previous)) + " -> " +
-                String(static_cast<int>(state.current)));
-        });
-
-    (void)network_events.on<NetworkEvent::AddressAcquired>(
-        [](const NetworkAddress& address, void*) {
-            Serial.println("[network] IP: " + String(address.address));
-        });
+  events.on(HttpEvent::Response, [](void* data) {
+    const auto& response = *static_cast<HttpResponse*>(data);
+    Serial.println(
+        "[event] http.response: " + String(response.code));
 
 #if defined(TRACKOWS_GPS_SIM7000G)
-    (void)http_events.on<HttpEvent::Response>(
-        [](const HttpResponse& response, void*) {
-            if (response.code < 200 || response.code >= 300) return;
-            digitalWrite(RESPONSE_LED_PIN, LOW);
-            response_led_timer.once_ms(RESPONSE_LED_DURATION_MS, [] {
-                digitalWrite(RESPONSE_LED_PIN, HIGH);
-            });
-        });
+    if (response.code < 200 || response.code >= 300) return;
+    digitalWrite(RESPONSE_LED_PIN, LOW);
+    response_led_timer.once_ms(
+        RESPONSE_LED_DURATION_MS,
+        [] { digitalWrite(RESPONSE_LED_PIN, HIGH); });
 #endif
+  });
+
+  events.on(HttpEvent::Error, [](void* data) {
+    const auto& error = *static_cast<EventError*>(data);
+    Serial.println(
+        "[event] http.error (" + String(error.code) + "): " +
+        error.message);
+  });
+
+  events.on(NetworkEvent::StateChanged, [](void* data) {
+    const auto& state = *static_cast<NetworkStateChange*>(data);
+    Serial.println(
+        "[event] network.state_changed: " +
+        String(static_cast<int>(state.previous)) + " -> " +
+        String(static_cast<int>(state.current)));
+  });
+
+  events.on(NetworkEvent::AddressAcquired, [](void* data) {
+    const auto& address = *static_cast<NetworkAddress*>(data);
+    Serial.println(
+        "[event] network.address_acquired: " +
+        String(address.address));
+  });
+
+  events.on(NetworkEvent::Error, [](void* data) {
+    const auto& error = *static_cast<EventError*>(data);
+    Serial.println(
+        "[event] network.error (" + String(error.code) + "): " +
+        error.message);
+  });
 }
 
 }  // namespace
 
 void setup() {
-    Serial.begin(115200);
-    Serial.println("[main] starting up...");
+  Serial.begin(115200);
+  Serial.println("[main] starting up...");
 
-    delay(2000);
-    esp_task_wdt_deinit();
+  delay(2000);
+  esp_task_wdt_deinit();
 
 #if defined(TRACKOWS_GPS_SIM7000G)
-    pinMode(RESPONSE_LED_PIN, OUTPUT);
-    digitalWrite(RESPONSE_LED_PIN, HIGH);  // Active-low LED: start off.
+  pinMode(RESPONSE_LED_PIN, OUTPUT);
+  digitalWrite(RESPONSE_LED_PIN, HIGH);  // Active-low LED: start off.
 #endif
 
-    if (!startEventLoops()) return;
-    registerHandlers();
+  registerHandlers();
 
-    auto network_result = network.start();
-    if (!network_result.has_value()) {
-        Serial.println(
-            "[main] network start failed: " +
-            network_result.error().message);
-        stopServices();
-        return;
-    }
+  auto network_result = network.start();
+  if (!network_result.has_value()) {
+    Serial.println(
+        "[main] network start failed: " +
+        network_result.error().message);
+    stopServices();
+    return;
+  }
 
-    auto http_result = http.start();
-    if (!http_result.has_value()) {
-        Serial.println(
-            "[main] HTTP start failed: " + http_result.error().message);
-        stopServices();
-        return;
-    }
+  auto http_result = http.start();
+  if (!http_result.has_value()) {
+    Serial.println(
+        "[main] HTTP start failed: " +
+        http_result.error().message);
+    stopServices();
+    return;
+  }
 
-    auto gps_result = gps.start();
-    if (!gps_result.has_value()) {
-        Serial.println(
-            "[main] GPS start failed: " + gps_result.error().message);
-        stopServices();
-        return;
-    }
-
-    (void)app_events.emit<AppEvent::Started>();
+  auto gps_result = gps.start();
+  if (!gps_result.has_value()) {
+    Serial.println(
+        "[main] GPS start failed: " +
+        gps_result.error().message);
+    stopServices();
+    return;
+  }
 }
 
 void loop() {
-    // Services, event dispatch, and HTTP workers own their FreeRTOS tasks.
-    delay(1000);
+  // Services and event dispatch own their FreeRTOS tasks.
+  delay(1000);
 }

@@ -17,24 +17,19 @@ extern "C" esp_err_t esp_crt_bundle_attach(void* config);
 
 class HttpService {
 private:
-    static constexpr size_t WORKER_COUNT = 2;
     static constexpr size_t MAX_PENDING_REQUESTS = 16;
 
     class WorkerTask final : public FreeRTOS::StaticTask<12288> {
     public:
-        WorkerTask(
-            HttpService& owner,
-            uint8_t index,
-            const char* name)
-            : FreeRTOS::StaticTask<12288>(tskIDLE_PRIORITY, name),
-              owner_(owner),
-              index_(index) {}
+        explicit WorkerTask(HttpService& owner)
+            : FreeRTOS::StaticTask<12288>(tskIDLE_PRIORITY, "http"),
+              owner_(owner) {}
 
         void taskFunction() final {
             for (;;) {
                 notifyTake(portMAX_DELAY);
                 setPriority(1);
-                owner_.workerLoop(index_);
+                owner_._poll();
                 setPriority(tskIDLE_PRIORITY);
                 owner_.worker_done_.sendToBack(true, portMAX_DELAY);
             }
@@ -42,17 +37,13 @@ private:
 
     private:
         HttpService& owner_;
-        uint8_t index_;
     };
 
 public:
-    HttpService(HttpEmitter& events, String server_url)
+    HttpService(EventEmitter& events, String server_url)
         : events_(events),
           server_url_(std::move(server_url)),
-          workers_{
-              WorkerTask(*this, 0, "http_0"),
-              WorkerTask(*this, 1, "http_1"),
-          } {}
+          worker_(*this) {}
 
     ~HttpService() { (void)stop(); }
 
@@ -67,15 +58,15 @@ public:
         if (!requests_.isValid() || !worker_done_.isValid())
             return tl::make_unexpected(Error("HTTP queue initialization failed"));
 
-        (void)events_.on<HttpEvent::PostLocation>(
-            &HttpService::enqueueLocation,
-            this);
+        events_.on(HttpEvent::PostLocation, [this](void* data) {
+            enqueue(static_cast<HttpPostLocation*>(data)->fix);
+        });
 
         requests_.reset();
         worker_done_.reset();
         stop_requested_ = false;
         running_ = true;
-        for (auto& worker : workers_) worker.notifyGive();
+        worker_.notifyGive();
         return true;
     }
 
@@ -86,11 +77,8 @@ public:
             stop_requested_ = true;
         }
 
-        bool clean = true;
-        for (size_t index = 0; index < WORKER_COUNT; ++index) {
-            if (!worker_done_.receive(pdMS_TO_TICKS(request_timeout_ms_ + 2000)))
-                clean = false;
-        }
+        const bool clean = worker_done_.receive(
+            pdMS_TO_TICKS(request_timeout_ms_ + 2000)).value_or(false);
 
         requests_.reset();
         running_ = false;
@@ -103,12 +91,6 @@ public:
     }
 
 private:
-    static void enqueueLocation(
-        const HttpPostLocation& location,
-        void* context) {
-        static_cast<HttpService*>(context)->enqueue(location.fix);
-    }
-
     void enqueue(const GPSFix& fix) {
         if (!running_ || stop_requested_) {
             emitError(Error("HTTP service is not running"));
@@ -123,7 +105,7 @@ private:
             String(requests_.messagesWaiting()) + ")");
     }
 
-    void workerLoop(uint8_t worker_index) {
+    void _poll() {
         esp_http_client_config_t config{};
         config.url = server_url_.c_str();
         config.method = HTTP_METHOD_POST;
@@ -143,7 +125,7 @@ private:
         while (!stop_requested_) {
             auto fix = requests_.receive(pdMS_TO_TICKS(100));
             if (!fix) continue;
-            performRequest(client, *fix, worker_index);
+            performRequest(client, *fix);
         }
 
         esp_http_client_cleanup(client);
@@ -151,13 +133,11 @@ private:
 
     void performRequest(
         esp_http_client_handle_t client,
-        const GPSFix& fix,
-        uint8_t worker_index) {
+        const GPSFix& fix) {
         const String body = fix.toJson();
         esp_http_client_set_post_field(client, body.c_str(), body.length());
 
-        Serial.println(
-            "[http:" + String(worker_index) + "] POST " + server_url_);
+        Serial.println("[http] POST " + server_url_);
         const esp_err_t result = esp_http_client_perform(client);
         if (result != ESP_OK) {
             emitError(Error(
@@ -167,23 +147,21 @@ private:
         }
 
         const int code = esp_http_client_get_status_code(client);
-        Serial.println(
-            "[http:" + String(worker_index) + "] response code=" +
-            String(code));
-        (void)events_.emit<HttpEvent::Response>({code, worker_index});
+        Serial.println("[http] response code=" + String(code));
+        events_.emit(HttpEvent::Response, HttpResponse{code});
     }
 
     void emitError(const Error& error) {
-        (void)events_.emit<HttpEvent::Error>(eventError(error));
+        events_.emit(HttpEvent::Error, eventError(error));
     }
 
-    HttpEmitter& events_;
+    EventEmitter& events_;
     String server_url_;
     uint16_t request_timeout_ms_ = 10000;
 
     FreeRTOS::StaticQueue<GPSFix, MAX_PENDING_REQUESTS> requests_;
-    FreeRTOS::StaticQueue<bool, WORKER_COUNT> worker_done_;
-    WorkerTask workers_[WORKER_COUNT];
+    FreeRTOS::StaticQueue<bool, 1> worker_done_;
+    WorkerTask worker_;
 
     std::atomic<bool> running_{false};
     std::atomic<bool> stop_requested_{false};

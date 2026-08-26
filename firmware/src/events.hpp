@@ -2,22 +2,14 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <esp_event.h>
 #include <cstring>
-#include <type_traits>
 
 #include "./emitter.hpp"
 #include "./result.hpp"
 
 class GPSState {
 public:
-    enum Value : uint8_t {
-        Stopped,
-        Starting,
-        Running,
-        Stopping,
-        Failed,
-    };
+    enum Value : uint8_t { Stopped, Starting, Running, Stopping, Failed };
 
     constexpr GPSState(Value value = Stopped) : value_(value) {}
     constexpr operator Value() const { return value_; }
@@ -36,7 +28,6 @@ public:
     friend constexpr bool operator==(GPSState lhs, GPSState rhs) {
         return lhs.value_ == rhs.value_;
     }
-
     friend constexpr bool operator!=(GPSState lhs, GPSState rhs) {
         return !(lhs == rhs);
     }
@@ -47,12 +38,7 @@ private:
 
 class GPSFixState {
 public:
-    enum Value : uint8_t {
-        Unknown,
-        Searching,
-        Fixed,
-        Lost,
-    };
+    enum Value : uint8_t { Unknown, Searching, Fixed, Lost };
 
     constexpr GPSFixState(Value value = Unknown) : value_(value) {}
     constexpr operator Value() const { return value_; }
@@ -70,7 +56,6 @@ public:
     friend constexpr bool operator==(GPSFixState lhs, GPSFixState rhs) {
         return lhs.value_ == rhs.value_;
     }
-
     friend constexpr bool operator!=(GPSFixState lhs, GPSFixState rhs) {
         return !(lhs == rhs);
     }
@@ -100,12 +85,7 @@ struct GPSFix {
             timestamp,
             sizeof(timestamp),
             "%04d-%02d-%02dT%02d:%02d:%02dZ",
-            year,
-            month,
-            day,
-            hour,
-            minute,
-            second);
+            year, month, day, hour, minute, second);
 
         JsonDocument doc;
         doc["lat"] = lat;
@@ -151,7 +131,6 @@ struct HttpPostLocation {
 
 struct HttpResponse {
     int code;
-    uint8_t worker;
 };
 
 enum class NetworkState : uint8_t {
@@ -170,73 +149,21 @@ struct NetworkAddress {
     char address[48];
 };
 
-enum class GpsEvent : int32_t {
-    Poll,
-    Fix,
-    Error,
-    StateChanged,
-    FixStateChanged,
-};
+namespace GpsEvent {
+inline constexpr char Fix[] = "gps.fix";
+inline constexpr char Error[] = "gps.error";
+inline constexpr char StateChanged[] = "gps.state_changed";
+inline constexpr char FixStateChanged[] = "gps.fix_state_changed";
+}  // namespace GpsEvent
 
-enum class HttpEvent : int32_t {
-    PostLocation,
-    Response,
-    Error,
-};
+namespace HttpEvent {
+inline constexpr char PostLocation[] = "http.post_location";
+inline constexpr char Response[] = "http.response";
+inline constexpr char Error[] = "http.error";
+}  // namespace HttpEvent
 
-enum class NetworkEvent : int32_t {
-    StateChanged,
-    AddressAcquired,
-    Error,
-};
-
-enum class AppEvent : int32_t {
-    Started,
-    Error,
-};
-
-template <> struct EventPayload<GpsEvent::Poll> { using type = NoPayload; };
-template <> struct EventPayload<GpsEvent::Fix> { using type = GPSFix; };
-template <> struct EventPayload<GpsEvent::Error> { using type = EventError; };
-template <> struct EventPayload<GpsEvent::StateChanged> {
-    using type = GPSStateChange;
-};
-template <> struct EventPayload<GpsEvent::FixStateChanged> {
-    using type = GPSFixStateChange;
-};
-
-template <> struct EventPayload<HttpEvent::PostLocation> {
-    using type = HttpPostLocation;
-};
-template <> struct EventPayload<HttpEvent::Response> {
-    using type = HttpResponse;
-};
-template <> struct EventPayload<HttpEvent::Error> { using type = EventError; };
-
-template <> struct EventPayload<NetworkEvent::StateChanged> {
-    using type = NetworkStateChange;
-};
-template <> struct EventPayload<NetworkEvent::AddressAcquired> {
-    using type = NetworkAddress;
-};
-template <> struct EventPayload<NetworkEvent::Error> {
-    using type = EventError;
-};
-
-template <> struct EventPayload<AppEvent::Started> { using type = NoPayload; };
-template <> struct EventPayload<AppEvent::Error> { using type = EventError; };
-
-ESP_EVENT_DECLARE_BASE(GPS_EVENT_BASE);
-ESP_EVENT_DECLARE_BASE(HTTP_EVENT_BASE);
-ESP_EVENT_DECLARE_BASE(NETWORK_EVENT_BASE);
-ESP_EVENT_DECLARE_BASE(APP_EVENT_BASE);
-
-using GpsEmitter = EventEmitter<GpsEvent>;
-using HttpEmitter = EventEmitter<HttpEvent>;
-using NetworkEmitter = EventEmitter<NetworkEvent>;
-using AppEmitter = EventEmitter<AppEvent>;
-
-static_assert(std::is_trivially_copyable<GPSFix>::value,
-              "GPSFix must be safe to copy through esp_event");
-static_assert(std::is_trivially_copyable<EventError>::value,
-              "EventError must be safe to copy through esp_event");
+namespace NetworkEvent {
+inline constexpr char StateChanged[] = "network.state_changed";
+inline constexpr char AddressAcquired[] = "network.address_acquired";
+inline constexpr char Error[] = "network.error";
+}  // namespace NetworkEvent

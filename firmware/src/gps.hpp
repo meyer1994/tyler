@@ -6,6 +6,8 @@
 #else
 #include <TinyGPSPlus.h>
 #endif
+#include <FreeRTOS/Queue.hpp>
+#include <FreeRTOS/Task.hpp>
 #include <atomic>
 #include <mutex>
 
@@ -26,13 +28,29 @@
 #endif
 
 class GPS {
+private:
+    class GpsTask final : public FreeRTOS::StaticTask<8192> {
+    public:
+        explicit GpsTask(GPS& owner)
+            : FreeRTOS::StaticTask<8192>(tskIDLE_PRIORITY, "gps"),
+              owner_(owner) {}
+
+        void taskFunction() final {
+            owner_._poll();
+        }
+
+    private:
+        GPS& owner_;
+    };
+
 public:
-    explicit GPS(GpsEmitter& events)
+    explicit GPS(EventEmitter& events)
         : events_(events),
           serial_(1)
 #if defined(TRACKOWS_GPS_SIM7000G)
           , modem_(serial_)
 #endif
+          , gps_task_(*this)
     {}
 
     ~GPS() { (void)stop(); }
@@ -41,7 +59,9 @@ public:
     GPS& operator=(const GPS&) = delete;
 
     Result<bool> start() {
-        (void)events_.on<GpsEvent::Poll>(&GPS::handlePoll, this);
+        if (!poll_queue_.isValid())
+            return tl::make_unexpected(Error("GPS queue initialization failed"));
+
         auto hardware = startHardware();
         if (!hardware.has_value()) {
             state_ = GPSState::Failed;
@@ -49,7 +69,9 @@ public:
             return tl::make_unexpected(hardware.error());
         }
 
+        poll_queue_.reset();
         running_ = true;
+
         const GPSFixState previous_fix_state = fix_state_.exchange(
             GPSFixState::Searching);
         const GPSState previous_state = state_;
@@ -57,12 +79,13 @@ public:
 
         emitFixStateChange(previous_fix_state, GPSFixState::Searching);
         emitStateChange(previous_state, GPSState::Running);
-        (void)events_.emit<GpsEvent::Poll>(0);
+        poll_queue_.sendToBack(true, 0);
         return true;
     }
 
     Result<bool> stop() {
         running_ = false;
+        poll_queue_.sendToBack(true, 0);
         {
             std::lock_guard<std::mutex> hardware_lock(hardware_mutex_);
             stopHardware();
@@ -78,19 +101,16 @@ public:
     }
 
 private:
-    static void handlePoll(void* context) {
-        static_cast<GPS*>(context)->pollOnce();
-    }
+    void _poll() {
+        for (;;) {
+            if (!poll_queue_.receive(portMAX_DELAY)) continue;
 
-    static void emitPoll(void* context) {
-        auto* gps = static_cast<GPS*>(context);
-        if (!gps->running_) return;
-        (void)gps->events_.emit<GpsEvent::Poll>(0);
-    }
-
-    void schedulePoll() {
-        if (!running_) return;
-        (void)events_.after(POLL_INTERVAL_MS, &GPS::emitPoll, this);
+            while (running_) {
+                pollOnce();
+                if (!running_) break;
+                (void)poll_queue_.receive(pdMS_TO_TICKS(POLL_INTERVAL_MS));
+            }
+        }
     }
 
     Result<bool> startHardware() {
@@ -171,8 +191,6 @@ private:
                     static_cast<uint8_t>(minute),
                     static_cast<uint8_t>(second),
                 });
-            } else {
-                checkFixTimeout();
             }
 #else
             bool updated = false;
@@ -197,41 +215,31 @@ private:
                     gps_.time.minute(),
                     gps_.time.second(),
                 });
-            } else {
-                checkFixTimeout();
             }
 #endif
         }
 
-        if (running_) schedulePoll();
     }
 
     void publishFix(const GPSFix& fix) {
-        last_fix_ms_ = millis();
         setFixState(GPSFixState::Fixed);
-        (void)events_.emit<GpsEvent::Fix>(fix, 0);
-    }
-
-    void checkFixTimeout() {
-        if (fix_state_ != GPSFixState::Fixed) return;
-        if (millis() - last_fix_ms_ < FIX_LOSS_TIMEOUT_MS) return;
-        setFixState(GPSFixState::Lost);
+        events_.emit(GpsEvent::Fix, fix);
     }
 
     void emitError(const Error& error) {
-        (void)events_.emit<GpsEvent::Error>(eventError(error), 0);
+        events_.emit(GpsEvent::Error, eventError(error));
     }
 
     void emitStateChange(GPSState previous, GPSState current) {
         if (previous == current) return;
-        (void)events_.emit<GpsEvent::StateChanged>({previous, current}, 0);
+        events_.emit(GpsEvent::StateChanged, GPSStateChange{previous, current});
     }
 
     void emitFixStateChange(
         GPSFixState previous,
         GPSFixState current) {
         if (previous == current) return;
-        (void)events_.emit<GpsEvent::FixStateChanged>({previous, current}, 0);
+        events_.emit(GpsEvent::FixStateChanged, GPSFixStateChange{previous, current});
     }
 
     void setFixState(GPSFixState current) {
@@ -239,7 +247,7 @@ private:
         emitFixStateChange(previous, current);
     }
 
-    GpsEmitter& events_;
+    EventEmitter& events_;
     HardwareSerial serial_;
 #if defined(TRACKOWS_GPS_SIM7000G)
     TinyGsm modem_;
@@ -252,11 +260,10 @@ private:
 #else
     static constexpr uint32_t POLL_INTERVAL_MS = 20;
 #endif
-    static constexpr uint32_t FIX_LOSS_TIMEOUT_MS = 5000;
-
+    FreeRTOS::StaticQueue<bool, 1> poll_queue_;
     std::atomic<bool> running_{false};
     GPSState state_{GPSState::Stopped};
     std::atomic<GPSFixState> fix_state_{GPSFixState::Unknown};
-    std::atomic<uint32_t> last_fix_ms_{0};
     std::mutex hardware_mutex_;
+    GpsTask gps_task_;
 };
