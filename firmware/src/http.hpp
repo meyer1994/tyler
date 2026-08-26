@@ -105,6 +105,20 @@ private:
             String(requests_.messagesWaiting()) + ")");
     }
 
+    static esp_err_t captureResponse(esp_http_client_event_t* event) {
+        if (event->event_id != HTTP_EVENT_ON_DATA ||
+            !event->user_data ||
+            !event->data ||
+            event->data_len <= 0)
+            return ESP_OK;
+
+        auto* service = static_cast<HttpService*>(event->user_data);
+        service->response_body_.concat(
+            static_cast<const char*>(event->data),
+            event->data_len);
+        return ESP_OK;
+    }
+
     void _poll() {
         esp_http_client_config_t config{};
         config.url = server_url_.c_str();
@@ -112,6 +126,8 @@ private:
         config.timeout_ms = request_timeout_ms_;
         config.keep_alive_enable = true;
         config.crt_bundle_attach = esp_crt_bundle_attach;
+        config.event_handler = &captureResponse;
+        config.user_data = this;
 
         esp_http_client_handle_t client = esp_http_client_init(&config);
         if (!client) {
@@ -138,6 +154,7 @@ private:
         esp_http_client_set_post_field(client, body.c_str(), body.length());
 
         Serial.println("[http] POST " + server_url_);
+        response_body_ = "";
         const esp_err_t result = esp_http_client_perform(client);
         if (result != ESP_OK) {
             emitError(Error(
@@ -148,7 +165,7 @@ private:
 
         const int code = esp_http_client_get_status_code(client);
         Serial.println("[http] response code=" + String(code));
-        events_.emit(HttpEvent::Response, HttpResponse{code});
+        events_.emit(HttpEvent::Response, HttpResponse{code, response_body_});
     }
 
     void emitError(const Error& error) {
@@ -158,6 +175,7 @@ private:
     EventEmitter& events_;
     String server_url_;
     uint16_t request_timeout_ms_ = 10000;
+    String response_body_;
 
     FreeRTOS::StaticQueue<GPSFix, MAX_PENDING_REQUESTS> requests_;
     FreeRTOS::StaticQueue<bool, 1> worker_done_;

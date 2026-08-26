@@ -88,6 +88,8 @@ void registerHandlers() {
     const auto& response = *static_cast<HttpResponse*>(data);
     Serial.println(
         "[event] http.response: " + String(response.code));
+    if (response.code == 200)
+        Serial.println("[event] http.response.json: " + response.body);
 
 #if defined(TRACKOWS_BOARD_SIM7000G)
     if (response.code < 200 || response.code >= 300) return;
