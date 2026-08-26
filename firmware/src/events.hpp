@@ -131,7 +131,8 @@ struct HttpPostLocation {
 
 struct HttpResponse {
     int code;
-    String body;
+    bool ok;
+    bool intersects;
 };
 
 enum class NetworkState : uint8_t {

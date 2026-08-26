@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <esp_http_client.h>
 
 // Arduino's esp_crt_bundle.h shadows the ESP-IDF header with a separate
@@ -147,6 +148,24 @@ private:
         esp_http_client_cleanup(client);
     }
 
+    HttpResponse parseResponse(int code) {
+        HttpResponse response{code, false, false};
+        if (code != 200) return response;
+
+        JsonDocument document;
+        const auto error = deserializeJson(document, response_body_);
+        if (error) {
+            emitError(Error(
+                "HTTP response JSON parse failed: " +
+                String(error.c_str())));
+            return response;
+        }
+
+        response.ok = document["ok"] | false;
+        response.intersects = document["intersects"] | false;
+        return response;
+    }
+
     void performRequest(
         esp_http_client_handle_t client,
         const GPSFix& fix) {
@@ -164,8 +183,13 @@ private:
         }
 
         const int code = esp_http_client_get_status_code(client);
-        Serial.println("[http] response code=" + String(code));
-        events_.emit(HttpEvent::Response, HttpResponse{code, response_body_});
+        const HttpResponse response = parseResponse(code);
+        Serial.println(
+            "[http] response code=" + String(code) +
+            " ok=" + String(response.ok ? "true" : "false") +
+            " intersects=" +
+            String(response.intersects ? "true" : "false"));
+        events_.emit(HttpEvent::Response, response);
     }
 
     void emitError(const Error& error) {

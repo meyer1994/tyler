@@ -17,42 +17,37 @@ const query = z.object({
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, query.parse)
 
-  const task = async () => {
-    const [item] = await db
-      .insert(events)
-      .values({
-        lat: body.lat,
-        lon: body.lon,
-        alt: body.alt,
-        speed: body.speed,
-        heading: body.heading,
-        hdop: body.hdop,
-        sat: body.sat,
-        ts: body.ts ? new Date(body.ts) : null,
-        boardId: 'BOARD',
-      })
-      .returning({
-        id: events.id,
-        point: events.point,
-      })
-    if (!item) return
+  const [item] = await db
+    .insert(events)
+    .values({
+      lat: body.lat,
+      lon: body.lon,
+      alt: body.alt,
+      speed: body.speed,
+      heading: body.heading,
+      hdop: body.hdop,
+      sat: body.sat,
+      ts: body.ts ? new Date(body.ts) : null,
+      boardId: 'BOARD',
+    })
+    .returning({
+      id: events.id,
+      point: events.point,
+    })
+  if (!item) return
 
-    const intersects = await db
-      .select({ id: fences.id })
-      .from(fences)
-      .where(
-        sql`ST_Intersects(${fences.polygon}, ST_SetSRID(ST_MakePoint(${item.point.x}, ${item.point.y}), 4326))`)
+  const intersects = await db
+    .select({ id: fences.id })
+    .from(fences)
+    .where(
+      sql`ST_Intersects(${fences.polygon}, ST_SetSRID(ST_MakePoint(${item.point.x}, ${item.point.y}), 4326))`)
 
-    if (intersects.length < 1) return
+  if (intersects.length < 1) return { ok: true, intersects: false }
 
-    await db
-      .insert(relFencesEvents)
-      .values(intersects.map(fence => ({
-        eventId: item.id,
-        fenceId: fence.id,
-      })))
-  }
+  const result = await db
+    .insert(relFencesEvents)
+    .values(intersects.map(f => ({ eventId: item.id, fenceId: f.id })))
+    .returning({ id: relFencesEvents.id })
 
-  event.waitUntil(task())
-  return { ok: true }
+  return { ok: true, intersects: result.length > 0 }
 })

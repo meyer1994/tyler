@@ -39,7 +39,32 @@ HttpService http(events, SERVER_URL);
 #if defined(TRACKOWS_BOARD_SIM7000G)
 constexpr uint8_t RESPONSE_LED_PIN = 12;
 constexpr uint32_t RESPONSE_LED_DURATION_MS = 100;
+constexpr uint32_t INTERSECT_LED_DURATION_MS = 40;
 Ticker response_led_timer;
+uint8_t response_led_transitions = 0;
+uint32_t response_led_duration_ms = RESPONSE_LED_DURATION_MS;
+
+void finishResponseLedBlink() {
+  digitalWrite(
+      RESPONSE_LED_PIN,
+      response_led_transitions % 2 ? HIGH : LOW);
+  --response_led_transitions;
+  if (response_led_transitions > 0)
+    response_led_timer.once_ms(
+        response_led_duration_ms,
+        finishResponseLedBlink);
+}
+
+void blinkResponseLed(bool intersects) {
+  digitalWrite(RESPONSE_LED_PIN, LOW);
+  response_led_transitions = intersects ? 3 : 1;
+  response_led_duration_ms = intersects
+      ? INTERSECT_LED_DURATION_MS
+      : RESPONSE_LED_DURATION_MS;
+  response_led_timer.once_ms(
+      response_led_duration_ms,
+      finishResponseLedBlink);
+}
 #endif
 
 void stopServices() {
@@ -87,16 +112,14 @@ void registerHandlers() {
   events.on(HttpEvent::Response, [](void* data) {
     const auto& response = *static_cast<HttpResponse*>(data);
     Serial.println(
-        "[event] http.response: " + String(response.code));
-    if (response.code == 200)
-        Serial.println("[event] http.response.json: " + response.body);
+        "[event] http.response: code=" + String(response.code) +
+        " ok=" + String(response.ok ? "true" : "false") +
+        " intersects=" +
+        String(response.intersects ? "true" : "false"));
 
 #if defined(TRACKOWS_BOARD_SIM7000G)
     if (response.code < 200 || response.code >= 300) return;
-    digitalWrite(RESPONSE_LED_PIN, LOW);
-    response_led_timer.once_ms(
-        RESPONSE_LED_DURATION_MS,
-        [] { digitalWrite(RESPONSE_LED_PIN, HIGH); });
+    blinkResponseLed(response.intersects);
 #endif
   });
 
