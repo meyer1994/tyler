@@ -183,10 +183,12 @@ private:
         }
 
         const int code = esp_http_client_get_status_code(client);
-        const HttpResponse response = parseResponse(code);
         Serial.println(
             "[http] response code=" + String(code) +
-            " ok=" + String(response.ok ? "true" : "false") +
+            " body=" + response_body_);
+        const HttpResponse response = parseResponse(code);
+        Serial.println(
+            "[http] response ok=" + String(response.ok ? "true" : "false") +
             " intersects=" +
             String(response.intersects ? "true" : "false"));
         events_.emit(HttpEvent::Response, response);
