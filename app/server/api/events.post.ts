@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
     .from(fences)
     .where(
       sql`ST_Intersects(${fences.polygon}, ST_SetSRID(ST_MakePoint(${item.point.x}, ${item.point.y}), 4326))`)
+  console.log('[events.post] intersects', intersects)
 
   if (intersects.length < 1) return { ok: true, intersects: false }
 
