@@ -130,8 +130,9 @@ Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via
     │   ├── main.cpp               # Wi‑Fi + HTTP + GPS FreeRTOS wiring
     │   ├── events.{hpp,cpp}       # GPSFix JSON, event name constants
     │   ├── emitter.hpp
-    │   ├── http.hpp               # queued POST of fixes
-    │   ├── network.hpp / wifi.hpp
+    │   ├── http.hpp               # queued POST of fixes via Network&
+    │   ├── network.hpp            # Network interface: connected/macAddress/post
+    │   ├── network/wifi.hpp       # WifiNetwork: init(ssid, pass), esp_http_client
     │   ├── cellular.hpp           # TinyGSM (not wired in main)
     │   ├── gps.hpp
     │   ├── gps/{external,sim7000g}.hpp
@@ -145,10 +146,12 @@ Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via
 
 - Boards: `TRACKOWS_BOARD_A7670G` (UART GPS) / `TRACKOWS_BOARD_SIM7000G` (modem
   GNSS).
-- Live path: Wi‑Fi (`NetworkService`) → `HttpService` POST → parse
-  `{ok,intersects}`. Cellular header exists unused.
-- Event bus names: `gps.fix`, `http.post_location`, `http.response`, `network.*`
-  (see `events.hpp`).
+- Live path: `WifiNetwork::init` → `HttpService` builds JSON (`mac` from
+  `Network::macAddress()`, eFuse MAC) → `Network::post` → parse
+  `{ok,intersects}`. Swap transports by implementing `Network` (e.g. a future
+  `CellularNetwork` over TinyGSM). Cellular header exists unused.
+- Event bus names: `gps.fix`, `http.post_location`, `http.response`,
+  `http.error` (see `events.hpp`).
 
 ## Commands
 
