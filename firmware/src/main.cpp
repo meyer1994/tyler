@@ -128,8 +128,11 @@ void registerHandlers() {
     Serial.println(
         "[event] http.response: code=" + String(response.code) +
         " ok=" + String(response.ok ? "true" : "false") +
+        " active=" + String(response.active ? "true" : "false") +
         " intersects=" +
         String(response.intersects ? "true" : "false"));
+
+    if (!response.active) return;
 
 #if defined(TRACKOWS_BOARD_SIM7000G)
     if (response.code < 200 || response.code >= 300) return;

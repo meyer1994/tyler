@@ -112,7 +112,7 @@ private:
     }
 
     HttpResponse parseResponse(int code, const String& body) {
-        HttpResponse response{code, false, false};
+        HttpResponse response{code, false, false, false};
         if (code != 200) return response;
 
         JsonDocument document;
@@ -125,6 +125,7 @@ private:
         }
 
         response.ok = document["ok"] | false;
+        response.active = document["active"] | false;
         response.intersects = document["intersects"] | false;
         return response;
     }
@@ -154,6 +155,7 @@ private:
         const HttpResponse response = parseResponse(result->code, result->body);
         Serial.println(
             "[http] response ok=" + String(response.ok ? "true" : "false") +
+            " active=" + String(response.active ? "true" : "false") +
             " intersects=" +
             String(response.intersects ? "true" : "false"));
         events_.emit(HttpEvent::Response, response);

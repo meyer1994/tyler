@@ -136,6 +136,7 @@ struct HttpPostLocation {
 struct HttpResponse {
     int code;
     bool ok;
+    bool active;
     bool intersects;
 };
 
