@@ -15,6 +15,7 @@ public:
 
     virtual bool connected() const = 0;
     virtual String macAddress() const = 0;  // "AA:BB:CC:DD:EE:FF"
+    virtual Result<String> ip() const = 0;
     virtual Result<NetworkResponse> post(
         const String& url,
         const char* content_type,

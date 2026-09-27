@@ -83,6 +83,12 @@ public:
         return address;
     }
 
+    Result<String> ip() const override {
+        if (!connected())
+            return tl::make_unexpected(Error("WiFi is not connected"));
+        return WiFi.localIP().toString();
+    }
+
     Result<NetworkResponse> post(
         const String& url,
         const char* content_type,

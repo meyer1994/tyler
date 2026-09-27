@@ -28,8 +28,8 @@ Body (JSON):
 - `200` → `{ ok: true, intersects: boolean }` (no fence hit → `intersects:
   false`)
 
-Firmware posts same shape (`GPSFix::toJson` + `mac` from eFuse, added in
-`HttpService`); `SERVER_URL` should be full URL
+Firmware posts same shape (`GPSFix::toJson` + `mac` from eFuse + `ip` from
+`Network::ip()`, added in `HttpService`); `SERVER_URL` should be full URL
 ending in `/api/events` (CI still uses `/api/event` — mismatch).
 
 ### tRPC — `POST|GET /api/trpc/*` → `app/server/api/trpc/[trpc].ts`
@@ -131,7 +131,7 @@ Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via
     │   ├── events.{hpp,cpp}       # GPSFix JSON, event name constants
     │   ├── emitter.hpp
     │   ├── http.hpp               # queued POST of fixes via Network&
-    │   ├── network.hpp            # Network interface: connected/macAddress/post
+    │   ├── network.hpp            # Network interface: connected/macAddress/ip/post
     │   ├── network/wifi.hpp       # WifiNetwork: init(ssid, pass), esp_http_client
     │   ├── cellular.hpp           # TinyGSM (not wired in main)
     │   ├── gps.hpp

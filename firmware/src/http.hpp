@@ -131,14 +131,17 @@ private:
 
     void performRequest(const GPSFix& fix) {
         const String mac = network_.macAddress();
+        const String ip = network_.ip().value_or("");
         JsonDocument document;
         fix.toJson(document);
         document["mac"] = mac;
+        if (!ip.isEmpty()) document["ip"] = ip;
 
         String body;
         serializeJson(document, body);
 
-        Serial.println("[http] POST " + server_url_ + " mac=" + mac);
+        Serial.println(
+            "[http] POST " + server_url_ + " mac=" + mac + " ip=" + ip);
         auto result = network_.post(server_url_, "application/json", body);
         if (!result) {
             emitError(result.error());
