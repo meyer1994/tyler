@@ -1,6 +1,7 @@
 # trackows app
 
-Nuxt 4 dashboard and API for GPS tracking. The app uses Vue, Nuxt UI, Better Auth, tRPC, Drizzle ORM, and PostgreSQL/PostGIS.
+Nuxt 4 dashboard and API for GPS tracking. The app uses Vue, Nuxt UI, Better
+Auth, tRPC, Drizzle ORM, and PostgreSQL/PostGIS.
 
 ## Requirements
 
@@ -57,9 +58,10 @@ pnpm run auth:generate # Regenerate Better Auth schema
 - `app/` — Nuxt pages, components, plugins, and client-side UI
 - `app/plugins/auth.ts` — Better Auth `$auth` Nuxt plugin and session handling
 - `app/plugins/trpc.ts` — typed tRPC client
+- `app/pages/dash/` — dashboard pages: maps, boards, events, fences
 - `server/api/auth/[...all].ts` — Better Auth catch-all endpoint
-- `server/api/event.post.ts` — GPS event ingestion endpoint
-- `server/trpc/` — protected events and geofence procedures
+- `server/api/events.post.ts` — GPS event ingestion endpoint
+- `server/trpc/` — protected boards, events, and geofence procedures
 - `server/db/schema.ts` — PostgreSQL/PostGIS schema
 - `server/db/migrations/` — Drizzle migrations
 - `public/` — static assets
@@ -81,7 +83,7 @@ protected tRPC procedures.
 
 ## GPS event ingestion
 
-Devices send JSON telemetry to `POST /api/event`:
+Devices send JSON telemetry to `POST /api/events` (unauthenticated):
 
 ```json
 {
@@ -92,12 +94,20 @@ Devices send JSON telemetry to `POST /api/event`:
   "heading": 180,
   "hdop": 0.9,
   "sat": 8,
-  "ts": "2026-01-01T12:00:00Z"
+  "ts": "2026-01-01T12:00:00Z",
+  "mac": "AA:BB:CC:DD:EE:FF",
+  "ip": "192.168.0.10"
 }
 ```
 
-Events are stored in PostgreSQL and associated with any geofences they
-intersect.
+Only `lat` and `lon` are required. Each request upserts the board (id =
+uppercased `mac`, falling back to `BOARD`) with its `ip` and `last_seen_at`,
+stores the event, and associates it with any geofences it intersects. The
+response is `{ "ok": true, "active": boolean, "intersects": boolean }`.
+
+Boards start inactive. Toggle them on `/dash/boards`; events from inactive
+boards are still stored, but `active: false` tells the firmware to skip its
+alarm/LED feedback.
 
 ## Docker
 

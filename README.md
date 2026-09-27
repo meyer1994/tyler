@@ -5,7 +5,7 @@ GPS tracking system with an ESP32 tracker, a Nuxt dashboard, and PostgreSQL/Post
 ## Project structure
 
 - `app/` — Nuxt 4 web app, authentication, API, tRPC routes, database schema, and migrations
-- `firmware/` — PlatformIO firmware for the LilyGO T-A7670 ESP32 board
+- `firmware/` — PlatformIO firmware for the LilyGO T-A7670G and T-SIM7000G ESP32 boards
 - `.github/workflows/` — CI configuration
 
 ## App
@@ -39,7 +39,8 @@ pnpm run build
 
 ## Firmware
 
-Configure the server and cellular settings in `firmware/.env`, then run:
+Set `WIFI_SSID`, `WIFI_PASS`, and `SERVER_URL` (ending in `/api/events`) in
+`firmware/.env`, then run:
 
 ```sh
 cd firmware
@@ -48,4 +49,8 @@ make upload
 make monitor
 ```
 
-The firmware acquires a GPS fix, connects over cellular, posts telemetry to the configured server path, and then enters deep sleep.
+The firmware joins Wi-Fi and continuously posts GPS fixes, tagged with the
+board's MAC address and IP. The server upserts the board, stores each event,
+checks it against geofences, and replies whether the board is active and
+inside a fence. Active boards signal the result locally, and boards start
+inactive until toggled on the dashboard's Boards page.
