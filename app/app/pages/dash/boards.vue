@@ -3,11 +3,12 @@ import type { AppRouterOutputs } from '@@/server/trpc'
 import type { TableColumn } from '@nuxt/ui'
 
 type Row = AppRouterOutputs['boards']['list'][number]
-type Keys = 'status' | 'id' | 'name' | 'ip' | 'count' | 'lastSeenAt' | 'createdAt' | 'updatedAt'
+type Keys = 'active' | 'status' | 'id' | 'name' | 'ip' | 'count' | 'lastSeenAt' | 'createdAt' | 'updatedAt'
 
 const ONLINE_WINDOW_MS = 2 * 60 * 1000
 
 const columns: TableColumn<Row>[] = [
+  { id: 'active', accessorKey: 'active', header: 'Active' },
   { id: 'status', header: 'Status' },
   { id: 'id', accessorKey: 'id', header: 'MAC' },
   { id: 'name', accessorKey: 'name', header: 'Name' },
@@ -24,6 +25,7 @@ const MAP_ID_TO_LABEL: Record<Keys, string> = columns.reduce(
 )
 
 const visible: Ref<Record<Keys, boolean>> = ref({
+  active: true,
   status: true,
   id: true,
   name: false,
@@ -40,6 +42,24 @@ const now = useNow({ interval: 30_000 })
 
 const isOnline = (lastSeenAt: Row['lastSeenAt']) =>
   !!lastSeenAt && now.value.getTime() - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS
+
+const toast = useToast()
+const saving = ref(new Set<string>())
+
+const setActive = async (id: string, active: boolean, refresh: () => Promise<unknown>) => {
+  saving.value.add(id)
+  try {
+    await $trpc.boards.setActive.mutate({ id, active })
+    await refresh()
+  }
+  catch (error) {
+    console.error(error)
+    toast.add({ title: 'Could not update board', color: 'error' })
+  }
+  finally {
+    saving.value.delete(id)
+  }
+}
 </script>
 
 <template>
@@ -102,6 +122,16 @@ const isOnline = (lastSeenAt: Row['lastSeenAt']) =>
           }"
           class="flex-1"
         >
+          <template #active-cell="{ row }">
+            <USwitch
+              :model-value="row.original.active"
+              :loading="saving.has(row.original.id)"
+              :disabled="saving.has(row.original.id)"
+              :aria-label="`Toggle ${row.original.id} active`"
+              @update:model-value="(value: boolean) => setActive(row.original.id, value, refresh)"
+            />
+          </template>
+
           <template #status-cell="{ row }">
             <UBadge
               :color="isOnline(row.original.lastSeenAt) ? 'success' : 'neutral'"
