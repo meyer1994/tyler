@@ -42,6 +42,7 @@ Router: `app/server/trpc/index.ts`. Client: `$trpc` / `useTRPC()` → `/api/trpc
 | --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ping`          | public  | → `"pong"`                                                                                                                                                  |
 | `health`        | public  | → `{ status, timestamp }`                                                                                                                                   |
+| `boards.list`   | session | → `{ id, name, ip, lastSeenAt, createdAt, updatedAt, eventsCount }[]` (last seen first, never-seen last) |
 | `events.list`   | session | in `{ after?, before? }` ISO datetimes (optional; after≤before); → GeoJSON `FeatureCollection<Point>` (≤1000, newest first; props = event row sans `point`) |
 | `fences.list`   | session | → GeoJSON `FeatureCollection<Polygon>` + props `{ id, area, createdAt, updatedAt, eventsCount }`                                                            |
 | `fences.create` | session | in GeoJSON Feature `{ type:'Feature', geometry: Polygon }`; → void                                                                                          |
@@ -119,7 +120,7 @@ Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via
 │       │   ├── events.post.ts
 │       │   ├── auth/[...all].ts
 │       │   └── trpc/[trpc].ts
-│       ├── trpc/{index,events,fences}.ts
+│       ├── trpc/{index,boards,events,fences}.ts
 │       ├── lib/{auth,drizzle,trpc}.ts
 │       └── db/
 │           ├── schema.ts          # events, fences, rel_fences_events + re-exports auth
