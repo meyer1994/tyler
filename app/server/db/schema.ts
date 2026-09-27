@@ -1,4 +1,3 @@
-import type { Polygon } from 'geojson'
 import type { SQL } from 'drizzle-orm'
 import { relations, sql } from 'drizzle-orm'
 import {
@@ -11,6 +10,8 @@ import {
   text,
   timestamp,
 } from 'drizzle-orm/pg-core'
+import type { Polygon } from 'geojson'
+import { uuidv7 } from 'uuidv7'
 
 import { Geometry } from 'wkx'
 
@@ -36,10 +37,11 @@ export const boards = pgTable('boards',
   {
     // Uppercased MAC address, matches `events.board_id`.
     id: text('id')
+      .$defaultFn(() => uuidv7())
       .primaryKey(),
 
-    name: text('name'),
     ip: text('ip'),
+    name: text('name'),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -61,7 +63,7 @@ export const events = pgTable('events',
   {
     id: text('id')
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => uuidv7()),
     boardId: text('board_id')
       .notNull(),
 
@@ -101,7 +103,7 @@ export const fences = pgTable('fences',
   {
     id: text('id')
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => uuidv7()),
 
     polygon: polygon('polygon')
       .notNull(),
@@ -128,7 +130,7 @@ export const relFencesEvents = pgTable('rel_fences_events',
   {
     id: text('id')
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => uuidv7()),
 
     fenceId: text('fence_id')
       .references(() => fences.id, { onDelete: 'cascade', onUpdate: 'cascade' }),

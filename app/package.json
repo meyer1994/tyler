@@ -40,6 +40,7 @@
     "nuxt-maplibre": "1.2.2",
     "pg": "^8.23.0",
     "trpc-nuxt": "^2.1.2",
+    "uuidv7": "^1.2.1",
     "vue": "^3.5.41",
     "vue-echarts": "^8.1.0",
     "vue-router": "^5.2.0",
