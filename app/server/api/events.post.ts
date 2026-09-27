@@ -12,6 +12,7 @@ const query = z.object({
   speed: z.number().nullish(),
   heading: z.number().nullish(),
   ts: z.iso.datetime().nullish(),
+  mac: z.string().regex(/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/i).nullish(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
       hdop: body.hdop,
       sat: body.sat,
       ts: body.ts ? new Date(body.ts) : null,
-      boardId: 'BOARD',
+      boardId: body.mac?.toUpperCase() ?? 'BOARD',
     })
     .returning({
       id: events.id,

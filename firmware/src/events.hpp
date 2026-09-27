@@ -80,6 +80,15 @@ struct GPSFix {
     uint8_t second;
 
     String toJson() const {
+        JsonDocument doc;
+        toJson(doc);
+
+        String payload;
+        serializeJson(doc, payload);
+        return payload;
+    }
+
+    void toJson(JsonDocument& doc) const {
         char timestamp[21] = {0};
         snprintf(
             timestamp,
@@ -87,7 +96,6 @@ struct GPSFix {
             "%04d-%02d-%02dT%02d:%02d:%02dZ",
             year, month, day, hour, minute, second);
 
-        JsonDocument doc;
         doc["lat"] = lat;
         doc["lon"] = lng;
         doc["alt"] = altitude;
@@ -96,10 +104,6 @@ struct GPSFix {
         doc["hdop"] = hdop;
         doc["sat"] = satellites;
         doc["ts"] = timestamp;
-
-        String payload;
-        serializeJson(doc, payload);
-        return payload;
     }
 };
 

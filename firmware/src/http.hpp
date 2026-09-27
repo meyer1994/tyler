@@ -41,8 +41,9 @@ private:
     };
 
 public:
-    explicit HttpService(String server_url)
+    HttpService(String server_url, String mac_address)
         : server_url_(std::move(server_url)),
+          mac_address_(std::move(mac_address)),
           worker_(*this) {}
 
     ~HttpService() { (void)stop(); }
@@ -170,7 +171,12 @@ private:
     void performRequest(
         esp_http_client_handle_t client,
         const GPSFix& fix) {
-        const String body = fix.toJson();
+        JsonDocument document;
+        fix.toJson(document);
+        document["mac"] = mac_address_;
+
+        String body;
+        serializeJson(document, body);
         esp_http_client_set_post_field(client, body.c_str(), body.length());
 
         Serial.println("[http] POST " + server_url_);
@@ -201,6 +207,7 @@ private:
 
     EventEmitter events_;
     String server_url_;
+    String mac_address_;
     uint16_t request_timeout_ms_ = 10000;
     String response_body_;
 

@@ -20,15 +20,16 @@ Firmware: `WIFI_SSID`, `WIFI_PASS`, `SERVER_URL` (build flags via
 
 Body (JSON):
 ```
-{ lat, lon, alt?, sat?, hdop?, speed?, heading?, ts? }  // ts = ISO datetime
+{ lat, lon, alt?, sat?, hdop?, speed?, heading?, ts?, mac? }  // ts = ISO datetime, mac = AA:BB:CC:DD:EE:FF
 ```
-- inserts `events` (`boardId` hardcoded `"BOARD"`), PostGIS `point` generated
-  from lon/lat
+- inserts `events` (`boardId` = uppercased `mac`, falls back to `"BOARD"`),
+  PostGIS `point` generated from lon/lat
 - `ST_Intersects` vs `fences`; links via `rel_fences_events`
 - `200` → `{ ok: true, intersects: boolean }` (no fence hit → `intersects:
   false`)
 
-Firmware posts same shape (`GPSFix::toJson`); `SERVER_URL` should be full URL
+Firmware posts same shape (`GPSFix::toJson` + `mac` from eFuse, added in
+`HttpService`); `SERVER_URL` should be full URL
 ending in `/api/events` (CI still uses `/api/event` — mismatch).
 
 ### tRPC — `POST|GET /api/trpc/*` → `app/server/api/trpc/[trpc].ts`
