@@ -41,15 +41,16 @@ private:
     };
 
 public:
-    HttpService(EventEmitter& events, String server_url)
-        : events_(events),
-          server_url_(std::move(server_url)),
+    explicit HttpService(String server_url)
+        : server_url_(std::move(server_url)),
           worker_(*this) {}
 
     ~HttpService() { (void)stop(); }
 
     HttpService(const HttpService&) = delete;
     HttpService& operator=(const HttpService&) = delete;
+
+    EventEmitter& events() { return events_; }
 
     Result<bool> start() {
         std::lock_guard<std::mutex> lock(state_mutex_);
@@ -198,7 +199,7 @@ private:
         events_.emit(HttpEvent::Error, eventError(error));
     }
 
-    EventEmitter& events_;
+    EventEmitter events_;
     String server_url_;
     uint16_t request_timeout_ms_ = 10000;
     String response_body_;

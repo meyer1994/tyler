@@ -36,15 +36,16 @@ private:
     };
 
 public:
-    GPS(EventEmitter& events, GpsBackend& backend)
-        : events_(events),
-          backend_(backend),
+    explicit GPS(GpsBackend& backend)
+        : backend_(backend),
           gps_task_(*this) {}
 
     ~GPS() { (void)stop(); }
 
     GPS(const GPS&) = delete;
     GPS& operator=(const GPS&) = delete;
+
+    EventEmitter& events() { return events_; }
 
     Result<bool> start() {
         if (!poll_queue_.isValid())
@@ -139,7 +140,7 @@ private:
         emitFixStateChange(previous, current);
     }
 
-    EventEmitter& events_;
+    EventEmitter events_;
     GpsBackend& backend_;
     FreeRTOS::StaticQueue<bool, 1> poll_queue_;
     std::atomic<bool> running_{false};

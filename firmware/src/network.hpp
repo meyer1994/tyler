@@ -11,18 +11,16 @@
 
 class NetworkService {
 public:
-    NetworkService(
-        EventEmitter& events,
-        String ssid,
-        String password)
-        : events_(events),
-          ssid_(std::move(ssid)),
+    NetworkService(String ssid, String password)
+        : ssid_(std::move(ssid)),
           password_(std::move(password)) {}
 
     ~NetworkService() { (void)stop(); }
 
     NetworkService(const NetworkService&) = delete;
     NetworkService& operator=(const NetworkService&) = delete;
+
+    EventEmitter& events() { return events_; }
 
     Result<bool> start() {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -98,7 +96,7 @@ private:
         events_.emit(NetworkEvent::Error, eventError(error));
     }
 
-    EventEmitter& events_;
+    EventEmitter events_;
     String ssid_;
     String password_;
     static constexpr time_t MINIMUM_VALID_TIME = 1704067200;  // 2024-01-01
