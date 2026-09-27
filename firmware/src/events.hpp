@@ -139,22 +139,6 @@ struct HttpResponse {
     bool intersects;
 };
 
-enum class NetworkState : uint8_t {
-    Stopped,
-    Connecting,
-    Connected,
-    Failed,
-};
-
-struct NetworkStateChange {
-    NetworkState previous;
-    NetworkState current;
-};
-
-struct NetworkAddress {
-    char address[48];
-};
-
 namespace GpsEvent {
 inline constexpr char Fix[] = "gps.fix";
 inline constexpr char Error[] = "gps.error";
@@ -167,9 +151,3 @@ inline constexpr char PostLocation[] = "http.post_location";
 inline constexpr char Response[] = "http.response";
 inline constexpr char Error[] = "http.error";
 }  // namespace HttpEvent
-
-namespace NetworkEvent {
-inline constexpr char StateChanged[] = "network.state_changed";
-inline constexpr char AddressAcquired[] = "network.address_acquired";
-inline constexpr char Error[] = "network.error";
-}  // namespace NetworkEvent

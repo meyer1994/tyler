@@ -4,7 +4,7 @@
 #include "./events.hpp"
 #include "./gps.hpp"
 #include "./http.hpp"
-#include "./network.hpp"
+#include "./network/wifi.hpp"
 
 #if defined(TRACKOWS_BOARD_SIM7000G)
 #include "./gps/sim7000g.hpp"
@@ -32,27 +32,11 @@ using GpsBackendImplementation = ExternalGpsBackend;
 
 namespace {
 
-String macAddress() {
-  const uint64_t mac = ESP.getEfuseMac();
-  char address[18];
-  snprintf(
-      address,
-      sizeof(address),
-      "%02X:%02X:%02X:%02X:%02X:%02X",
-      static_cast<uint8_t>(mac),
-      static_cast<uint8_t>(mac >> 8),
-      static_cast<uint8_t>(mac >> 16),
-      static_cast<uint8_t>(mac >> 24),
-      static_cast<uint8_t>(mac >> 32),
-      static_cast<uint8_t>(mac >> 40));
-  return address;
-}
-
 GpsBackendImplementation gps_backend;
 
 GPS gps(gps_backend);
-NetworkService network(WIFI_SSID, WIFI_PASS);
-HttpService http(SERVER_URL, macAddress());
+WifiNetwork network;
+HttpService http(network, SERVER_URL);
 
 #if defined(TRACKOWS_BOARD_SIM7000G)
 constexpr uint8_t RESPONSE_LED_PIN = 12;
@@ -101,7 +85,6 @@ void pulseAlarm() {
 void stopServices() {
   (void)gps.stop();
   (void)http.stop();
-  (void)network.stop();
 }
 
 void registerHandlers() {
@@ -165,28 +148,6 @@ void registerHandlers() {
         "[event] http.error (" + String(error.code) + "): " +
         error.message);
   });
-
-  network.events().on(NetworkEvent::StateChanged, [](void* data) {
-    const auto& state = *static_cast<NetworkStateChange*>(data);
-    Serial.println(
-        "[event] network.state_changed: " +
-        String(static_cast<int>(state.previous)) + " -> " +
-        String(static_cast<int>(state.current)));
-  });
-
-  network.events().on(NetworkEvent::AddressAcquired, [](void* data) {
-    const auto& address = *static_cast<NetworkAddress*>(data);
-    Serial.println(
-        "[event] network.address_acquired: " +
-        String(address.address));
-  });
-
-  network.events().on(NetworkEvent::Error, [](void* data) {
-    const auto& error = *static_cast<EventError*>(data);
-    Serial.println(
-        "[event] network.error (" + String(error.code) + "): " +
-        error.message);
-  });
 }
 
 }  // namespace
@@ -198,7 +159,7 @@ void setup() {
   delay(2000);
   esp_task_wdt_deinit();
 
-  Serial.println("[main] MAC: " + macAddress());
+  Serial.println("[main] MAC: " + network.macAddress());
 
 #if defined(TRACKOWS_BOARD_SIM7000G)
   pinMode(RESPONSE_LED_PIN, OUTPUT);
@@ -212,7 +173,7 @@ void setup() {
 
   registerHandlers();
 
-  auto network_result = network.start();
+  auto network_result = network.init(WIFI_SSID, WIFI_PASS);
   if (!network_result.has_value()) {
     Serial.println(
         "[main] network start failed: " +

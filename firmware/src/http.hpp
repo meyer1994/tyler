@@ -2,18 +2,13 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <esp_http_client.h>
-
-// Arduino's esp_crt_bundle.h shadows the ESP-IDF header with a separate
-// bundle implementation that must be initialized manually. esp_http_client
-// uses the certificate bundle embedded in the ESP-IDF SDK instead.
-extern "C" esp_err_t esp_crt_bundle_attach(void* config);
 #include <FreeRTOS/Queue.hpp>
 #include <FreeRTOS/Task.hpp>
 #include <atomic>
 #include <mutex>
 
 #include "./events.hpp"
+#include "./network.hpp"
 #include "./result.hpp"
 
 class HttpService {
@@ -41,9 +36,9 @@ private:
     };
 
 public:
-    HttpService(String server_url, String mac_address)
-        : server_url_(std::move(server_url)),
-          mac_address_(std::move(mac_address)),
+    HttpService(Network& network, String server_url)
+        : network_(network),
+          server_url_(std::move(server_url)),
           worker_(*this) {}
 
     ~HttpService() { (void)stop(); }
@@ -108,54 +103,20 @@ private:
             String(requests_.messagesWaiting()) + ")");
     }
 
-    static esp_err_t captureResponse(esp_http_client_event_t* event) {
-        if (event->event_id != HTTP_EVENT_ON_DATA ||
-            !event->user_data ||
-            !event->data ||
-            event->data_len <= 0)
-            return ESP_OK;
-
-        auto* service = static_cast<HttpService*>(event->user_data);
-        service->response_body_.concat(
-            static_cast<const char*>(event->data),
-            event->data_len);
-        return ESP_OK;
-    }
-
     void _poll() {
-        esp_http_client_config_t config{};
-        config.url = server_url_.c_str();
-        config.method = HTTP_METHOD_POST;
-        config.timeout_ms = request_timeout_ms_;
-        config.keep_alive_enable = true;
-        config.crt_bundle_attach = esp_crt_bundle_attach;
-        config.event_handler = &captureResponse;
-        config.user_data = this;
-
-        esp_http_client_handle_t client = esp_http_client_init(&config);
-        if (!client) {
-            emitError(Error("HTTP client initialization failed"));
-            return;
-        }
-
-        esp_http_client_set_header(client, "Content-Type", "application/json");
-        esp_http_client_set_header(client, "Connection", "keep-alive");
-
         while (!stop_requested_) {
             auto fix = requests_.receive(pdMS_TO_TICKS(100));
             if (!fix) continue;
-            performRequest(client, *fix);
+            performRequest(*fix);
         }
-
-        esp_http_client_cleanup(client);
     }
 
-    HttpResponse parseResponse(int code) {
+    HttpResponse parseResponse(int code, const String& body) {
         HttpResponse response{code, false, false};
         if (code != 200) return response;
 
         JsonDocument document;
-        const auto error = deserializeJson(document, response_body_);
+        const auto error = deserializeJson(document, body);
         if (error) {
             emitError(Error(
                 "HTTP response JSON parse failed: " +
@@ -168,32 +129,26 @@ private:
         return response;
     }
 
-    void performRequest(
-        esp_http_client_handle_t client,
-        const GPSFix& fix) {
+    void performRequest(const GPSFix& fix) {
+        const String mac = network_.macAddress();
         JsonDocument document;
         fix.toJson(document);
-        document["mac"] = mac_address_;
+        document["mac"] = mac;
 
         String body;
         serializeJson(document, body);
-        esp_http_client_set_post_field(client, body.c_str(), body.length());
 
-        Serial.println("[http] POST " + server_url_);
-        response_body_ = "";
-        const esp_err_t result = esp_http_client_perform(client);
-        if (result != ESP_OK) {
-            emitError(Error(
-                "HTTP request failed: " + String(esp_err_to_name(result)),
-                result));
+        Serial.println("[http] POST " + server_url_ + " mac=" + mac);
+        auto result = network_.post(server_url_, "application/json", body);
+        if (!result) {
+            emitError(result.error());
             return;
         }
 
-        const int code = esp_http_client_get_status_code(client);
         Serial.println(
-            "[http] response code=" + String(code) +
-            " body=" + response_body_);
-        const HttpResponse response = parseResponse(code);
+            "[http] response code=" + String(result->code) +
+            " body=" + result->body);
+        const HttpResponse response = parseResponse(result->code, result->body);
         Serial.println(
             "[http] response ok=" + String(response.ok ? "true" : "false") +
             " intersects=" +
@@ -206,10 +161,9 @@ private:
     }
 
     EventEmitter events_;
+    Network& network_;
     String server_url_;
-    String mac_address_;
     uint16_t request_timeout_ms_ = 10000;
-    String response_body_;
 
     FreeRTOS::StaticQueue<GPSFix, MAX_PENDING_REQUESTS> requests_;
     FreeRTOS::StaticQueue<bool, 1> worker_done_;
