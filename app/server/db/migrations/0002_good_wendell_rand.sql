@@ -1,0 +1,1 @@
+ALTER TABLE "boards" ADD COLUMN "active" boolean DEFAULT true NOT NULL;

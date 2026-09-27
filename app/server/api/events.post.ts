@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, query.parse)
   const boardId = body.mac?.toUpperCase() ?? 'BOARD'
 
-  await db
+  const [board] = await db
     .insert(boards)
     .values({
       id: boardId,
@@ -35,6 +35,8 @@ export default defineEventHandler(async (event) => {
         updatedAt: sql`CURRENT_TIMESTAMP`,
       },
     })
+    .returning({ active: boards.active })
+  const active = board?.active ?? false
 
   const [item] = await db
     .insert(events)
@@ -62,12 +64,12 @@ export default defineEventHandler(async (event) => {
       sql`ST_Intersects(${fences.polygon}, ST_SetSRID(ST_MakePoint(${item.point.x}, ${item.point.y}), 4326))`)
   console.log('[events.post] intersects', intersects)
 
-  if (intersects.length < 1) return { ok: true, intersects: false }
+  if (intersects.length < 1) return { ok: true, active, intersects: false }
 
   const result = await db
     .insert(relFencesEvents)
     .values(intersects.map(f => ({ eventId: item.id, fenceId: f.id })))
     .returning({ id: relFencesEvents.id })
 
-  return { ok: true, intersects: result.length > 0 }
+  return { ok: true, active, intersects: result.length > 0 }
 })

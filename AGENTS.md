@@ -23,12 +23,13 @@ Body (JSON):
 { lat, lon, alt?, sat?, hdop?, speed?, heading?, ts?, mac?, ip? }  // ts = ISO datetime, mac = AA:BB:CC:DD:EE:FF, ip = IPv4/IPv6
 ```
 - upserts `boards` (id = boardId; sets `last_seen_at`, keeps previous `ip` if
-  none sent)
+  none sent) and reads its `active` flag
 - inserts `events` (`boardId` = uppercased `mac`, falls back to `"BOARD"`),
   PostGIS `point` generated from lon/lat
 - `ST_Intersects` vs `fences`; links via `rel_fences_events`
-- `200` → `{ ok: true, intersects: boolean }` (no fence hit → `intersects:
-  false`)
+- `200` → `{ ok: true, active: boolean, intersects: boolean }` (no fence hit →
+  `intersects: false`); events are stored either way, `active: false` tells
+  the firmware to skip its alarm/LED
 
 Firmware posts same shape (`GPSFix::toJson` + `mac` from eFuse + `ip` from
 `Network::ip()`, added in `HttpService`); `SERVER_URL` should be full URL
@@ -42,7 +43,8 @@ Router: `app/server/trpc/index.ts`. Client: `$trpc` / `useTRPC()` → `/api/trpc
 | --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ping`          | public  | → `"pong"`                                                                                                                                                  |
 | `health`        | public  | → `{ status, timestamp }`                                                                                                                                   |
-| `boards.list`   | session | → `{ id, name, ip, lastSeenAt, createdAt, updatedAt, eventsCount }[]` (last seen first, never-seen last) |
+| `boards.list`   | session | → `{ id, name, ip, active, lastSeenAt, createdAt, updatedAt, eventsCount }[]` (last seen first, never-seen last) |
+| `boards.setActive` | session | in `{ id, active }`; → void |
 | `events.list`   | session | in `{ after?, before? }` ISO datetimes (optional; after≤before); → GeoJSON `FeatureCollection<Point>` (≤1000, newest first; props = event row sans `point`) |
 | `fences.list`   | session | → GeoJSON `FeatureCollection<Polygon>` + props `{ id, area, createdAt, updatedAt, eventsCount }`                                                            |
 | `fences.create` | session | in GeoJSON Feature `{ type:'Feature', geometry: Polygon }`; → void                                                                                          |
@@ -62,7 +64,7 @@ Email/password (`requireEmailVerification: false`). Client plugin provides
 
 | Table               | Key columns                                                                                          |
 | ------------------- | ---------------------------------------------------------------------------------------------------- |
-| `boards`            | id (uppercased MAC = events.board_id, no FK), name, ip, last_seen_at, created_at, updated_at         |
+| `boards`            | id (uppercased MAC = events.board_id, no FK), name, ip, active (default false), last_seen_at, created_at, updated_at |
 | `events`            | id, board_id, lat, lon, alt, speed, heading, hdop, sat, ts, point(generated), created_at, updated_at |
 | `fences`            | id, polygon(4326), area(generated ST_Area), created_at, updated_at                                   |
 | `rel_fences_events` | id, fence_id, event_id, created_at, updated_at                                                       |

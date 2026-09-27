@@ -15,6 +15,20 @@
       "when": 1790536946521,
       "tag": "0001_chubby_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790537880077,
+      "tag": "0002_good_wendell_rand",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790537987636,
+      "tag": "0003_glossy_mulholland_black",
+      "breakpoints": true
     }
   ]
 }

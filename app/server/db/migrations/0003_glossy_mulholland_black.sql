@@ -1,0 +1,1 @@
+ALTER TABLE "boards" ALTER COLUMN "active" SET DEFAULT false;

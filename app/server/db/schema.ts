@@ -1,6 +1,7 @@
 import type { SQL } from 'drizzle-orm'
 import { relations, sql } from 'drizzle-orm'
 import {
+  boolean,
   customType,
   geometry,
   index,
@@ -42,6 +43,9 @@ export const boards = pgTable('boards',
 
     ip: text('ip'),
     name: text('name'),
+    active: boolean('active')
+      .notNull()
+      .default(false),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at', { withTimezone: true })

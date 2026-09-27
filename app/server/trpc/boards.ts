@@ -1,4 +1,5 @@
 import { count, eq, sql } from 'drizzle-orm'
+import z from 'zod'
 import { boards, events } from '~~/server/db/schema'
 import { createTRPCRouter, protectedProcedure } from '../lib/trpc'
 
@@ -10,6 +11,7 @@ export const boardsRouter = createTRPCRouter({
           id: boards.id,
           name: boards.name,
           ip: boards.ip,
+          active: boards.active,
           lastSeenAt: boards.lastSeenAt,
           createdAt: boards.createdAt,
           updatedAt: boards.updatedAt,
@@ -19,5 +21,14 @@ export const boardsRouter = createTRPCRouter({
         .leftJoin(events, eq(boards.id, events.boardId))
         .groupBy(boards.id)
         .orderBy(sql`${boards.lastSeenAt} DESC NULLS LAST`)
+    }),
+
+  setActive: protectedProcedure
+    .input(z.object({ id: z.string(), active: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(boards)
+        .set({ active: input.active })
+        .where(eq(boards.id, input.id))
     }),
 })
