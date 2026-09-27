@@ -8,11 +8,14 @@
 
 #if defined(TRACKOWS_BOARD_SIM7000G)
 #include "./gps/sim7000g.hpp"
-#include <Ticker.h>
 using GpsBackendImplementation = Sim7000GpsBackend;
 #else
 #include "./gps/external.hpp"
 using GpsBackendImplementation = ExternalGpsBackend;
+#endif
+
+#if defined(TRACKOWS_BOARD_SIM7000G) || defined(TRACKOWS_BOARD_A7670G)
+#include <Ticker.h>
 #endif
 
 #ifndef WIFI_SSID
@@ -64,6 +67,19 @@ void blinkResponseLed(bool intersects) {
   response_led_timer.once_ms(
       response_led_duration_ms,
       finishResponseLedBlink);
+}
+#endif
+
+#if defined(TRACKOWS_BOARD_A7670G)
+constexpr uint8_t ALARM_PIN = 32;
+constexpr uint32_t ALARM_DURATION_MS = 1000;
+Ticker alarm_timer;
+
+void pulseAlarm() {
+  digitalWrite(ALARM_PIN, HIGH);
+  alarm_timer.once_ms(ALARM_DURATION_MS, [] {
+    digitalWrite(ALARM_PIN, LOW);
+  });
 }
 #endif
 
@@ -121,6 +137,11 @@ void registerHandlers() {
     if (response.code < 200 || response.code >= 300) return;
     blinkResponseLed(response.intersects);
 #endif
+
+#if defined(TRACKOWS_BOARD_A7670G)
+    if (response.code < 200 || response.code >= 300) return;
+    if (response.ok && !response.intersects) pulseAlarm();
+#endif
   });
 
   events.on(HttpEvent::Error, [](void* data) {
@@ -165,6 +186,11 @@ void setup() {
 #if defined(TRACKOWS_BOARD_SIM7000G)
   pinMode(RESPONSE_LED_PIN, OUTPUT);
   digitalWrite(RESPONSE_LED_PIN, HIGH);  // Active-low LED: start off.
+#endif
+
+#if defined(TRACKOWS_BOARD_A7670G)
+  pinMode(ALARM_PIN, OUTPUT);
+  digitalWrite(ALARM_PIN, LOW);
 #endif
 
   registerHandlers();
