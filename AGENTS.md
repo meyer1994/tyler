@@ -61,6 +61,7 @@ Email/password (`requireEmailVerification: false`). Client plugin provides
 | ------------------- | ---------------------------------------------------------------------------------------------------- |
 | `events`            | id, board_id, lat, lon, alt, speed, heading, hdop, sat, ts, point(generated), created_at, updated_at |
 | `fences`            | id, polygon(4326), area(generated ST_Area), created_at, updated_at                                   |
+| `boards`            | id (uppercased MAC = events.board_id, no FK), name, ip, last_seen_at, created_at, updated_at         |
 | `rel_fences_events` | id, fence_id, event_id, created_at, updated_at                                                       |
 
 Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via

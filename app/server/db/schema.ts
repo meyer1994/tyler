@@ -32,6 +32,31 @@ const polygon = customType<{ data: Polygon, driverData: string }>({
   },
 })
 
+export const boards = pgTable('boards',
+  {
+    // Uppercased MAC address, matches `events.board_id`.
+    id: text('id')
+      .primaryKey(),
+
+    name: text('name'),
+    ip: text('ip'),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+  },
+  table => [
+    index('boards_last_seen_at_idx').on(table.lastSeenAt),
+    index('boards_created_at_idx').on(table.createdAt),
+    index('boards_updated_at_idx').on(table.updatedAt),
+  ],
+)
+
 export const events = pgTable('events',
   {
     id: text('id')
@@ -132,7 +157,15 @@ export const fencesRelations = relations(fences, ({ many }) => ({
   events: many(relFencesEvents),
 }))
 
-export const eventsRelations = relations(events, ({ many }) => ({
+export const boardsRelations = relations(boards, ({ many }) => ({
+  events: many(events),
+}))
+
+export const eventsRelations = relations(events, ({ one, many }) => ({
+  board: one(boards, {
+    fields: [events.boardId],
+    references: [boards.id],
+  }),
   fences: many(relFencesEvents),
 }))
 
