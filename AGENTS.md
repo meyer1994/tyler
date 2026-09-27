@@ -20,8 +20,10 @@ Firmware: `WIFI_SSID`, `WIFI_PASS`, `SERVER_URL` (build flags via
 
 Body (JSON):
 ```
-{ lat, lon, alt?, sat?, hdop?, speed?, heading?, ts?, mac? }  // ts = ISO datetime, mac = AA:BB:CC:DD:EE:FF
+{ lat, lon, alt?, sat?, hdop?, speed?, heading?, ts?, mac?, ip? }  // ts = ISO datetime, mac = AA:BB:CC:DD:EE:FF, ip = IPv4/IPv6
 ```
+- upserts `boards` (id = boardId; sets `last_seen_at`, keeps previous `ip` if
+  none sent)
 - inserts `events` (`boardId` = uppercased `mac`, falls back to `"BOARD"`),
   PostGIS `point` generated from lon/lat
 - `ST_Intersects` vs `fences`; links via `rel_fences_events`
@@ -59,9 +61,9 @@ Email/password (`requireEmailVerification: false`). Client plugin provides
 
 | Table               | Key columns                                                                                          |
 | ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `boards`            | id (uppercased MAC = events.board_id, no FK), name, ip, last_seen_at, created_at, updated_at         |
 | `events`            | id, board_id, lat, lon, alt, speed, heading, hdop, sat, ts, point(generated), created_at, updated_at |
 | `fences`            | id, polygon(4326), area(generated ST_Area), created_at, updated_at                                   |
-| `boards`            | id (uppercased MAC = events.board_id, no FK), name, ip, last_seen_at, created_at, updated_at         |
 | `rel_fences_events` | id, fence_id, event_id, created_at, updated_at                                                       |
 
 Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via

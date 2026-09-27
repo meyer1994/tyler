@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import * as z from 'zod'
-import { events, fences, relFencesEvents } from '../db/schema'
+import { boards, events, fences, relFencesEvents } from '../db/schema'
 import { db } from '../lib/drizzle'
 
 const query = z.object({
@@ -13,10 +13,28 @@ const query = z.object({
   heading: z.number().nullish(),
   ts: z.iso.datetime().nullish(),
   mac: z.string().regex(/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/i).nullish(),
+  ip: z.union([z.ipv4(), z.ipv6()]).nullish(),
 })
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, query.parse)
+  const boardId = body.mac?.toUpperCase() ?? 'BOARD'
+
+  await db
+    .insert(boards)
+    .values({
+      id: boardId,
+      ip: body.ip,
+      lastSeenAt: sql`CURRENT_TIMESTAMP`,
+    })
+    .onConflictDoUpdate({
+      target: boards.id,
+      set: {
+        ip: sql`COALESCE(excluded.ip, ${boards.ip})`,
+        lastSeenAt: sql`CURRENT_TIMESTAMP`,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      },
+    })
 
   const [item] = await db
     .insert(events)
@@ -29,7 +47,7 @@ export default defineEventHandler(async (event) => {
       hdop: body.hdop,
       sat: body.sat,
       ts: body.ts ? new Date(body.ts) : null,
-      boardId: body.mac?.toUpperCase() ?? 'BOARD',
+      boardId,
     })
     .returning({
       id: events.id,
