@@ -77,7 +77,7 @@ Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via
 | `/`                                                          | `app/app/pages/index.vue`           |
 | `/signin`                                                    | `app/app/pages/signin.vue`          |
 | `/dash`                                                      | `app/app/pages/dash.vue` + children |
-| `/dash/maps`, `/dash/mapsgl`, `/dash/events`, `/dash/fences` | under `pages/dash/`                 |
+| `/dash/maps`, `/dash/mapsgl`, `/dash/boards`, `/dash/events`, `/dash/fences` | under `pages/dash/` |
 
 ---
 
@@ -113,7 +113,7 @@ Drizzle: `server/db/schema.ts`. Migrate: `pnpm run db:migrate` (PostGIS via
 │   │   │   ├── index.vue
 │   │   │   ├── signin.vue
 │   │   │   ├── dash.vue
-│   │   │   └── dash/{index,maps,mapsgl,events,fences}.vue
+│   │   │   └── dash/{index,maps,mapsgl,boards,events,fences}.vue
 │   │   └── plugins/{auth,trpc,maplibre.client}.ts
 │   └── server/
 │       ├── api/

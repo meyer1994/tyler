@@ -19,6 +19,11 @@ const navItems: NavigationMenuItem[] = [
     to: '/dash/maps',
   },
   {
+    label: 'Boards',
+    icon: 'i-lucide-cpu',
+    to: '/dash/boards',
+  },
+  {
     label: 'Events',
     icon: 'i-lucide-table',
     to: '/dash/events',
