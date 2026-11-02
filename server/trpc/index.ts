@@ -1,6 +1,4 @@
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server'
-import { boardsRouter } from '~~/server/trpc/boards'
-import { eventsRouter } from '~~/server/trpc/events'
 import { fencesRouter } from '~~/server/trpc/fences'
 import { baseProcedure, createTRPCRouter } from '../lib/trpc'
 
@@ -10,8 +8,6 @@ export const appRouter = createTRPCRouter({
   health: baseProcedure
     .query(() => ({ status: 'ok', timestamp: new Date().toISOString() })),
 
-  boards: boardsRouter,
-  events: eventsRouter,
   fences: fencesRouter,
 })
 

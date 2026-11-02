@@ -1,7 +1,7 @@
+import { desc, eq } from 'drizzle-orm'
 import type { FeatureCollection, Polygon } from 'geojson'
-import { countDistinct, desc, eq } from 'drizzle-orm'
 import z from 'zod'
-import { fences, relFencesEvents } from '~~/server/db/schema'
+import { fences } from '~~/server/db/schema'
 import { createTRPCRouter, protectedProcedure } from '../lib/trpc'
 
 export const fencesRouter = createTRPCRouter({
@@ -14,11 +14,8 @@ export const fencesRouter = createTRPCRouter({
           area: fences.area,
           createdAt: fences.createdAt,
           updatedAt: fences.updatedAt,
-          eventsCount: countDistinct(relFencesEvents.eventId),
         })
         .from(fences)
-        .leftJoin(relFencesEvents, eq(fences.id, relFencesEvents.fenceId))
-        .groupBy(fences.id)
         .orderBy(desc(fences.createdAt))
 
       type Properties = Omit<typeof data[number], 'polygon'>
@@ -34,7 +31,6 @@ export const fencesRouter = createTRPCRouter({
             area: f.area,
             createdAt: f.createdAt,
             updatedAt: f.updatedAt,
-            eventsCount: f.eventsCount,
           },
         })),
       }
