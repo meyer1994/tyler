@@ -10,7 +10,6 @@
     <div class="relative h-full w-full">
       <MapGL
         class="h-full w-full"
-        :events="[]"
         :fences="polygonsData"
         @fence-created="async (i) => {
           await $trpc.fences.create.mutate(i)
