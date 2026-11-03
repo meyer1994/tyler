@@ -10,16 +10,17 @@ const schemaPath = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig(event)
   const { x, y, z } = await getValidatedRouterParams(event, schemaPath.parse)
 
-  const url = new URL('http://localhost:8000/tiles')
+  const url = new URL(config.public.tiles)
   console.info('[server.tiles] url', url)
 
   const rows = await db
     .select({ geometry: fences.polygon })
     .from(fences)
     .orderBy(desc(fences.createdAt))
-  console.info('[server.tiles] rows', rows)
+  console.info('[server.tiles] total rows', rows.length)
 
   return await $fetch(url.toString(), {
     method: 'POST',

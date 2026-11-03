@@ -20,7 +20,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     database: {
       url: process.env.DATABASE_URL,
-      tiles: process.env.TILES_URL,
+    },
+    public: {
+      tiles: process.env.TILES,
     },
   },
 
