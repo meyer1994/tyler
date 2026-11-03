@@ -11,9 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from geojson_pydantic.geometries import MultiPolygon, Polygon
 from PIL import Image
 from pydantic import BaseModel
+from rio_tiler.colormap import cmap
 from rio_tiler.io import STACReader
 from rio_tiler.utils import create_cutline
-from rio_tiler.colormap import cmap
 from shapely.geometry import shape
 
 logger = logging.getLogger(__name__)
@@ -68,9 +68,9 @@ class PostTileBody(BaseModel):
     x: int
     y: int
     z: int
-    fmt: Literal["png"] = 'png'
+    fmt: Literal["png"] = "png"
     geometries: list[Polygon | MultiPolygon] = []
-    assets: list[str] = ['red', 'green', 'blue']
+    assets: list[str] = ["red", "green", "blue"]
     rescale: list[list[float]] = [(0, 2048), (0, 2048), (0, 2048)]
     expr: str | None = None
     colormap: str | None = None
