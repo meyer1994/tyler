@@ -7,9 +7,13 @@ services:
       - 3000:3000
     env_file:
       - .env
-    environment:
-      BETTER_AUTH_URL: https://blanket-adware-plays-kidney.trycloudflare.com
-      DATABASE_URL: postgresql://postgres@postgres:5432/postgres
+
+  tiler:
+    build:
+      context: .
+      dockerfile: Dockerfile.tiler
+    ports:
+      - 8000:8000
 
   postgres:
     image: postgis/postgis:18-3.6-alpine
