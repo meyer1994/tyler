@@ -41,6 +41,9 @@ watch(
     map.map.fitBounds([minX - 0.001, minY - 0.001, maxX + 0.001, maxY + 0.001], { animate: false })
   },
 )
+
+const url = useRequestURL()
+const tilesUrl = `${url.origin}/api/tiles/{x}/{y}/{z}`
 </script>
 
 <template>
@@ -63,6 +66,19 @@ watch(
       >
         <pre class="text-black overflow-x-auto">{{ hovered.properties }}</pre>
       </MglPopup>
+
+      <MglRasterSource
+        source-id="sentinel-raster-source"
+        :tiles="[tilesUrl]"
+        :tile-size="256"
+        attribution="Sentinel-2 L2A via TiTiler"
+      >
+        <MglRasterLayer
+          layer-id="sentinel-raster-layer"
+          source="sentinel-raster-source"
+          :paint="{ 'raster-opacity': 0.7 }"
+        />
+      </MglRasterSource>
 
       <MglGeoJsonSource
         source-id="events-geojson-source"
