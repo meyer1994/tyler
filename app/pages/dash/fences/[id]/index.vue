@@ -11,14 +11,29 @@ const asCollection = (
   features: feature ? [feature] : [],
 })
 
+const views: { label: string, value: 'ndvi' | 'rgb' }[] = [
+  { label: 'NDVI', value: 'ndvi' },
+  { label: 'RGB', value: 'rgb' },
+]
+
+const view = ref<'ndvi' | 'rgb'>('ndvi')
+
 const url = useRequestURL()
 </script>
 
 <template>
   <div class="flex h-full w-full flex-col gap-4 p-4">
-    <h1 class="text-lg font-bold">
-      Fence <span class="font-mono">#{{ id.substring(0, 8) }}</span>
-    </h1>
+    <div class="flex items-center justify-between gap-4">
+      <h1 class="text-lg font-bold">
+        Fence <span class="font-mono">#{{ id.substring(0, 8) }}</span>
+      </h1>
+
+      <URadioGroup
+        v-model="view"
+        orientation="horizontal"
+        :items="views"
+      />
+    </div>
 
     <AsyncFetch
       v-slot="{ data, status }"
@@ -27,10 +42,11 @@ const url = useRequestURL()
     >
       <div class="flex flex-1 min-h-0 flex-col gap-4 lg:flex-row">
         <div class="flex-1 min-h-0 min-w-0 overflow-hidden rounded-lg border border-default">
-          <MapGL
+          <MapGLView
             v-if="data"
             class="h-full w-full"
             :fences="asCollection(data)"
+            :view="view"
             :tiles="`${url.origin}/api/tiles/fences/${id}/{x}/{y}/{z}`"
           />
           <div

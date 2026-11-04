@@ -11,10 +11,10 @@ const collections = [
   { label: 'Copernicus DEM GLO-90', value: 'cop-dem-glo-90' },
 ]
 
-const views = [
+const views: { label: string, value: 'ndvi' | 'rgb' }[] = [
   { label: 'NDVI', value: 'ndvi' },
   { label: 'RGB', value: 'rgb' },
-] as const
+]
 
 const collection = ref('sentinel-2-l2a')
 const view = ref<'ndvi' | 'rgb'>('ndvi')
