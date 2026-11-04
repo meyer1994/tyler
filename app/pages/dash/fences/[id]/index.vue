@@ -10,6 +10,8 @@ const asCollection = (
   type: 'FeatureCollection',
   features: feature ? [feature] : [],
 })
+
+const url = useRequestURL()
 </script>
 
 <template>
@@ -29,6 +31,7 @@ const asCollection = (
             v-if="data"
             class="h-full w-full"
             :fences="asCollection(data)"
+            :tiles="`${url.origin}/api/tiles/fences/${id}/{x}/{y}/{z}`"
           />
           <div
             v-else

@@ -1,11 +1,12 @@
 import io
 import logging
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Annotated, Literal
 
 import mercantile
 import shapely
-from fastapi import Depends, FastAPI, Response
+from fastapi import Body, Depends, FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from geojson_pydantic.geometries import MultiPolygon, Polygon
 from PIL import Image
@@ -139,3 +140,34 @@ def post_tile(ctx: Annotated[PostTile, Depends(PostTile)]):
     content = image.render(img_format="PNG", colormap=colormap)
 
     return Response(content=content, media_type="image/png")
+
+
+@dataclass
+class PostSql:
+    body: Annotated[list[Polygon | MultiPolygon], Body()]
+    query: Annotated[str, Query()]
+    searcher: Annotated[Searcher, Depends(lambda: Searcher())]
+
+
+@app.post("/sql")
+def post_sql(ctx: Annotated[PostSql, Depends(PostSql)]):
+    logger.debug(f"Total geometries: {len(ctx.body)}")
+    logger.debug(f"Query: {ctx.query}")
+
+    futures: list[Future[list[Link]]] = []
+    with ThreadPoolExecutor() as executor:
+        for geometry in ctx.body:
+            futures.append(
+                executor.submit(
+                    ctx.searcher.url,
+                    geometry.__geo_interface__,
+                    collection="sentinel-2-l2a",
+                    limit=1,
+                )
+            )
+
+    for geom, future in zip(ctx.body, futures):
+        result = future.result()
+        logger.debug(f"Geometry {geom} matched {len(result)} items: {[i.href for i in result]}")
+
+    return {"query": ctx.query}
