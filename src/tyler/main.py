@@ -1,9 +1,8 @@
 import io
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Literal
 
-import httpx2
 import mercantile
 import shapely
 from fastapi import Depends, FastAPI, Response
@@ -11,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from geojson_pydantic.geometries import MultiPolygon, Polygon
 from PIL import Image
 from pydantic import BaseModel
+from pystac_client import Client
 from rio_tiler.colormap import cmap
 from rio_tiler.io import STACReader
 from rio_tiler.utils import create_cutline
@@ -33,28 +33,28 @@ app.add_middleware(
 
 @dataclass
 class Searcher:
-    base: str = "https://earth-search.aws.element84.com/v1/search"
+    base: str = field(default="https://earth-search.aws.element84.com/v1")
+    
+    _client: Client = field(init=False)
+
+    def __post_init__(self):
+        self._client = Client.open(self.base)
 
     def search(self, geometry: dict):
-        response = httpx2.post(
-            self.base,
-            json={
-                "limit": 1,
-                "intersects": geometry,
-                "collections": ["sentinel-2-l2a"],
-                "query": {"eo:cloud_cover": {"lt": 10}},
-                "sortby": [{"field": "properties.datetime", "direction": "asc"}],
-            },
+        return self._client.search(
+            limit=1,
+            intersects=geometry,
+            collections=["sentinel-2-l2a"],
+            query={"eo:cloud_cover": {"lt": 10}},
+            sortby=[{"field": "properties.datetime", "direction": "asc"}],
         )
-        return response.json()
 
     def url(self, geometry: dict):
-        items = self.search(geometry)
-        for feat in items.get("features", []):
-            for link in feat.get("links", []):
-                if link.get("rel") != "self":
-                    continue
-                return link.get("href")
+        result = self.search(geometry)
+        for item in result.items():
+            for link in item.links:
+                if link.rel == "self":
+                    return link.href
         raise ValueError("No item found")
 
 

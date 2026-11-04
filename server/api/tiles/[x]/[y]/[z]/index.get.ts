@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
   const { x, y, z } = await getValidatedRouterParams(event, schemaPath.parse)
 
-  const url = new URL(config.public.tiles)
+  const url = new URL(config.tiles)
   console.info('[server.tiles] url', url)
 
   const rows = await db

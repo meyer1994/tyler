@@ -18,11 +18,11 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
+    // tiles api server
+    tiles: process.env.NUXT_TILES,
+    // postgres database
     database: {
       url: process.env.DATABASE_URL,
-    },
-    public: {
-      tiles: process.env.TILES,
     },
   },
 

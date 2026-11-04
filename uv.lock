@@ -1468,6 +1468,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pystac-client"
+version = "0.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pystac" },
+    { name = "python-dateutil" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/04/b3a04169db6a39dfecb579f8aefb655cb3bf10d5a8f4dae5358bbddfa468/pystac_client-0.9.1.tar.gz", hash = "sha256:cfdbc123cb14fba5909b947ed57e423af39b061de07a52040fb65f694cb8896e", size = 57283, upload-time = "2026-10-20T21:06:29.776Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/92/a9a958e0b0bf642d2a32ef349c77c83d5a3092e78596866c60fdb6dab52c/pystac_client-0.9.1-py3-none-any.whl", hash = "sha256:53247a8997002c36202fc419a891ea493bd44c45a446a8e77aca7d8b9bd82516", size = 43568, upload-time = "2026-10-20T21:06:28.517Z" },
+]
+
+[[package]]
 name = "pystac-core"
 version = "1.15.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2247,6 +2261,7 @@ dependencies = [
     { name = "geojson-pydantic" },
     { name = "mercantile" },
     { name = "pillow" },
+    { name = "pystac-client" },
     { name = "rasterio" },
     { name = "rio-tiler" },
     { name = "shapely" },
@@ -2265,6 +2280,7 @@ requires-dist = [
     { name = "geojson-pydantic", specifier = ">=2.2.0" },
     { name = "mercantile", specifier = ">=1.2.1" },
     { name = "pillow", specifier = ">=13.0.0" },
+    { name = "pystac-client", specifier = ">=0.9.1" },
     { name = "rasterio", specifier = ">=1.5.2" },
     { name = "rio-tiler", specifier = ">=9.4.13" },
     { name = "shapely", specifier = ">=2.2.0" },
