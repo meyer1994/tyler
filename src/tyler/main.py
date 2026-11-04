@@ -1,12 +1,15 @@
 import io
 import logging
+import logging.config
+import warnings
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Annotated, Literal
 
 import mercantile
 import shapely
-from fastapi import Body, Depends, FastAPI, Path, Query, Response
+import uvicorn.logging
+from fastapi import Body, Depends, FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from geojson_pydantic.geometries import MultiPolygon, Polygon
 from PIL import Image
@@ -21,8 +24,47 @@ from rio_tiler.utils import create_cutline
 from shapely.geometry import shape
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+
+logging.config.dictConfig(
+    {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "use_colors": True,
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+                "()": uvicorn.logging.DefaultFormatter,
+                "fmt": "%(levelprefix)s [%(asctime)s] [%(module)s:%(lineno)s] %(message)s",
+            }
+        },
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": logging.StreamHandler,
+            }
+        },
+        "loggers": {
+            "root": {
+                "handlers": ["default"],
+                "level": "INFO",
+            }
+        },
+    }
+)
+
+# Some Earth Search collections (e.g. sentinel-2-c1-l2a) ship a storage
+# extension whose https hrefs pystac cannot migrate, and omit raster band
+# statistics. Both are harmless, so silence the warnings.
+warnings.filterwarnings(
+    "ignore",
+    message="Could not parse bucket/account from href",
+    category=UserWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message="Some statistics data in STAC are invalid",
+    category=UserWarning,
+)
 
 app = FastAPI()
 
@@ -111,6 +153,9 @@ def post_tile(ctx: Annotated[PostTile, Depends(PostTile)]):
     for curl in curls:
         logger.debug(f"URL: {curl.href}")
 
+    if not curls:
+        return Response(content=empty(), media_type="image/png")
+
     def read(curl: Link) -> ImageData:
         with STACReader(curl.href) as reader:
             return reader.tile(
@@ -163,14 +208,14 @@ def get_image(ctx: Annotated[PostImage, Depends(PostImage)]):
 
     with STACReader(url) as reader:
         image = reader.feature(
-            ctx.body.geometry.__geo_interface__,
             assets=ctx.body.assets,
             expression=ctx.body.expr,
+            shape=ctx.body.geometry.__geo_interface__,
             vrt_options={
                 "cutline": create_cutline(
                     src_dst=reader,
-                    geometry=ctx.body.geometry.__geo_interface__,
                     geometry_crs="epsg:4326",
+                    geometry=ctx.body.geometry.__geo_interface__,
                 )
             },
         )
@@ -202,22 +247,31 @@ def post_search(ctx: Annotated[PostSearch, Depends(PostSearch)]):
     geometry = [shape(geom) for geom in ctx.body.geometries]
     geometry = shapely.union_all(geometry)
 
-    res = ctx.searcher._client.search(
-        max_items=10,
+    response = ctx.searcher._client.search(
         intersects=geometry.__geo_interface__,
         collections=["sentinel-2-l2a"],
-        query={"eo:cloud_cover": {"lt": 10}},
-        sortby=[{"field": "properties.datetime", "direction": "asc"}],
+        max_items=10,
+        sortby=[{"field": "properties.datetime", "direction": "desc"}],
     )
 
-    response = ctx.searcher.url(
-        geometry=geometry.__geo_interface__,
-        collection="sentinel-2-l2a",
-        limit=10,
-    )
+    feats = []
+    for item in response.items():
+        feats.append(
+            {
+                "type": "Feature",
+                "geometry": item.geometry,
+                "properties": {
+                    "href": item.get_self_href(),
+                    "datetime": item.properties.get("datetime"),
+                    "cloudcover": item.properties.get("eo:cloud_cover"),
+                },
+            }
+        )
 
-    return [i.absolute_href for i in response]
-
+    return {
+        "type": "FeatureCollection",
+        "features": feats,
+    }
 
 
 @dataclass

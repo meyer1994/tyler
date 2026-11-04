@@ -9,18 +9,17 @@ const schemaPath = z.object({
 
 const schemaQuery = z.object({
   href: z.url(),
-  view: z.enum(['ndvi', 'rgb']).default('ndvi'),
   collection: z.string().default('sentinel-2-l2a'),
 })
 
 export default defineEventHandler(async (event) => {
-  const { href, view, collection } = await getValidatedQuery(event, schemaQuery.parse)
+  const { href, collection } = await getValidatedQuery(event, schemaQuery.parse)
   const { id } = await getValidatedRouterParams(event, schemaPath.parse)
 
   const config = useRuntimeConfig(event)
   const url = new URL(config.tiles)
   url.pathname = '/image'
-  console.info('[server.tiles] url', url, 'view', view, 'collection', collection)
+  console.info('[server.tiles] url', url, 'collection', collection)
 
   const [row] = await db
     .select({ geometry: fences.polygon })

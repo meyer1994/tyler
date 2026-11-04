@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { FeatureCollection } from 'geojson'
+
 const route = useRoute()
 const { $trpc } = useNuxtApp()
 
@@ -67,21 +69,38 @@ const url = useRequestURL()
           @update:model-value="navigateTo({ query: { ...$route.query, tab: $event } })"
         >
           <template #search>
-            <UCard title="Search">
+            <UCard
+              title="Search"
+              :ui="{ body: 'flex flex-col gap-4' }"
+            >
               <AsyncFetch
                 v-slot="{ data: searchData }"
                 :fetch-key="`fence-${id}-search`"
-                :handler="async () => await $fetch(`${url.origin}/api/tiles/fences/${id}/search`)"
+                :handler="async () => await $fetch<FeatureCollection>(`${url.origin}/api/tiles/fences/${id}/search`)"
               >
                 <template
-                  v-for="item in searchData"
-                  :key="item"
+                  v-for="item in searchData?.features"
+                  :key="item.properties.href"
                 >
-                  <NuxtImg :src="`${url.origin}/api/tiles/fences/${id}/image?href=${encodeURIComponent(item)}&view=${view}`" />
+                  <UCard :ui="{ header: 'flex items-center justify-between' }">
+                    <template #header>
+                      <NuxtTime
+                        :datetime="item.properties.datetime"
+                        title
+                        relative
+                      />
+
+                      <span class="text-muted text-xs">
+                        {{ item.properties.cloudcover?.toFixed(2) }}% cloud cover
+                      </span>
+                    </template>
+                    <NuxtImg :src="`${url.origin}/api/tiles/fences/${id}/image?href=${encodeURIComponent(item.properties.href)}&view=${view}`" />
+                  </UCard>
                 </template>
               </AsyncFetch>
             </UCard>
           </template>
+
           <template #geojson>
             <UCard title="GeoJSON">
               <pre class="text-xs whitespace-pre-wrap break-all">{{ JSON.stringify(data, null, 2) }}</pre>

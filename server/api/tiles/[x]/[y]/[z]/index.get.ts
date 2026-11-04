@@ -2,6 +2,7 @@ import { desc } from 'drizzle-orm'
 import { z } from 'zod'
 import { fences } from '~~/server/db/schema'
 import { db } from '~~/server/lib/drizzle'
+import { Collections, View } from '~~/shared/types'
 
 const schemaPath = z.object({
   x: z.coerce.number(),
@@ -9,26 +10,56 @@ const schemaPath = z.object({
   z: z.coerce.number(),
 })
 
-const schemaQuery = z.object({
-  view: z.enum(['ndvi', 'rgb']).default('ndvi'),
-  collection: z.string().default('sentinel-2-l2a'),
-})
+type TileTemplate = {
+  assets: string[]
+  expr?: string
+  rescale?: number[][]
+  colormap?: string
+}
 
-const templates = {
-  rgb: {
-    assets: ['visual'],
-    rescale: [[0, 255]],
+const TEMPLATES: Record<Collections, Partial<Record<View, TileTemplate>>> = {
+  'sentinel-2-l2a': {
+    rgb: { assets: ['visual'], rescale: [[0, 255]] },
+    ndvi: { assets: ['nir', 'red'], expr: '(b1-b2)/(b1+b2)', rescale: [[-1, 1]], colormap: 'rdylgn' },
   },
-  ndvi: {
-    assets: ['nir', 'red'],
-    expr: '(b1-b2)/(b1+b2)',
-    rescale: [[-1, 1]],
-    colormap: 'rdylgn',
+  'sentinel-2-c1-l2a': {
+    rgb: { assets: ['visual'], rescale: [[0, 255]] },
+    ndvi: { assets: ['nir', 'red'], expr: '(b1-b2)/(b1+b2)', rescale: [[-1, 1]], colormap: 'rdylgn' },
   },
-} as const
+  // 'landsat-c2-l2': {
+  //   rgb: { assets: ['red', 'green', 'blue'], rescale: [[0, 65535], [0, 65535], [0, 65535]] },
+  //   ndvi: { assets: ['nir08', 'red'], expr: '(b1-b2)/(b1+b2)', rescale: [[-1, 1]], colormap: 'rdylgn' },
+  // },
+  // 'naip': {
+  //   // `image` is a 4-band (R, G, B, NIR) asset
+  //   rgb: { assets: ['image'], rescale: [[0, 255]] },
+  //   ndvi: { assets: ['image'], expr: '(b4-b1)/(b4+b1)', rescale: [[-1, 1]], colormap: 'rdylgn' },
+  // },
+  // 'sentinel-1-grd': {
+  //   rgb: { assets: ['vv'], rescale: [[0, 1]] },
+  // },
+  // 'cop-dem-glo-30': {
+  //   rgb: { assets: ['data'], rescale: [[0, 4000]], colormap: 'terrain' },
+  // },
+  // 'cop-dem-glo-90': {
+  //   rgb: { assets: ['data'], rescale: [[0, 4000]], colormap: 'terrain' },
+  // },
+}
+
+const schemaQuery = z
+  .object({
+    view: z.enum(View).default(View.NDVI),
+    collection: z.enum(Collections).default(Collections.SENTINEL_2_L2A),
+  })
+  .refine(({ view, collection }) => !!TEMPLATES[collection][view])
+  .transform(({ view, collection }) => ({
+    view,
+    collection,
+    template: TEMPLATES[collection][view]!,
+  }))
 
 export default defineEventHandler(async (event) => {
-  const { view, collection } = await getValidatedQuery(event, schemaQuery.parse)
+  const { view, collection, template } = await getValidatedQuery(event, schemaQuery.parse)
   const { x, y, z } = await getValidatedRouterParams(event, schemaPath.parse)
 
   const config = useRuntimeConfig(event)
@@ -51,7 +82,7 @@ export default defineEventHandler(async (event) => {
       fmt: 'png',
       geometries: rows.map(i => i.geometry),
       collection,
-      ...templates[view],
+      ...template,
     },
   })
 })
