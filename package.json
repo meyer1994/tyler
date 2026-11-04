@@ -21,6 +21,7 @@
     "@indoorequal/vue-maplibre-gl": "^9.0.1",
     "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@nuxt/eslint": "1.17.0",
+    "@nuxt/image": "2.2.1",
     "@nuxt/ui": "^4.11.0",
     "@trpc/client": "^11.18.0",
     "@trpc/server": "^11.18.0",

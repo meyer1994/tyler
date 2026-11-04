@@ -61,11 +61,27 @@ const url = useRequestURL()
           class="w-128"
           :model-value="String($route.query.tab ?? 'geojson')"
           :items="[
-            { label: 'Map', value: 'map', slot: 'map' },
+            { label: 'Search', value: 'search', slot: 'search' },
             { label: 'GeoJSON', value: 'geojson', slot: 'geojson' },
           ]"
           @update:model-value="navigateTo({ query: { ...$route.query, tab: $event } })"
         >
+          <template #search>
+            <UCard title="Search">
+              <AsyncFetch
+                v-slot="{ data: searchData }"
+                :fetch-key="`fence-${id}-search`"
+                :handler="async () => await $fetch(`${url.origin}/api/tiles/fences/${id}/search`)"
+              >
+                <template
+                  v-for="item in searchData"
+                  :key="item"
+                >
+                  <NuxtImg :src="`${url.origin}/api/tiles/fences/${id}/image?href=${encodeURIComponent(item)}&view=${view}`" />
+                </template>
+              </AsyncFetch>
+            </UCard>
+          </template>
           <template #geojson>
             <UCard title="GeoJSON">
               <pre class="text-xs whitespace-pre-wrap break-all">{{ JSON.stringify(data, null, 2) }}</pre>

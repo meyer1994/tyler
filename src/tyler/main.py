@@ -6,11 +6,11 @@ from typing import Annotated, Literal
 
 import mercantile
 import shapely
-from fastapi import Body, Depends, FastAPI, Query, Response
+from fastapi import Body, Depends, FastAPI, Path, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from geojson_pydantic.geometries import MultiPolygon, Polygon
 from PIL import Image
-from pydantic import BaseModel
+from pydantic import AnyUrl, BaseModel, Field
 from pystac import Link
 from pystac_client import Client
 from rio_tiler.colormap import cmap
@@ -38,7 +38,7 @@ app.add_middleware(
 @dataclass
 class Searcher:
     base: str = field(default="https://earth-search.aws.element84.com/v1")
-    
+
     _client: Client = field(init=False)
 
     def __post_init__(self):
@@ -50,7 +50,7 @@ class Searcher:
             intersects=geometry,
             collections=[collection],
             query={"eo:cloud_cover": {"lt": 10}},
-            sortby=[{"field": "properties.datetime", "direction": "asc"}],
+            sortby=[{"field": "properties.datetime", "direction": "desc"}],
         )
 
     def url(self, geometry: dict, collection: str, limit: int = 1):
@@ -58,10 +58,7 @@ class Searcher:
         # Only the `self` link points at the STAC Item itself; the rest are
         # catalog/collection/asset links that STACReader cannot open.
         return [
-            link
-            for item in result.items()
-            for link in item.links
-            if link.rel == "self"
+            link for item in result.items() for link in item.links if link.rel == "self"
         ]
 
 
@@ -72,16 +69,16 @@ def empty() -> bytes:
 
 
 class PostTileBody(BaseModel):
-    x: int
-    y: int
-    z: int
-    fmt: Literal["png"] = "png"
-    geometries: list[Polygon | MultiPolygon] = []
-    assets: list[str] = ["red", "green", "blue"]
-    rescale: list[list[float]] = [(0, 2048), (0, 2048), (0, 2048)]
-    expr: str | None = None
-    colormap: str | None = None
-    collection: str = "sentinel-2-l2a"
+    x: Annotated[int, Field()]
+    y: Annotated[int, Field()]
+    z: Annotated[int, Field()]
+    fmt: Annotated[Literal["png"], Field(default="png")]
+    geometries: Annotated[list[Polygon | MultiPolygon], Field(default_factory=list)]
+    assets: Annotated[list[str], Field(default_factory=lambda: ["visual"])]
+    rescale: Annotated[list[list[float]], Field(default=[[0, 255]])]
+    expr: Annotated[str | None, Field(default=None)]
+    colormap: Annotated[str | None, Field(default=None)]
+    collection: Annotated[str, Field(default="sentinel-2-l2a")]
 
 
 @dataclass
@@ -143,6 +140,87 @@ def post_tile(ctx: Annotated[PostTile, Depends(PostTile)]):
 
 
 @dataclass
+class PostImageBody(BaseModel):
+    href: Annotated[AnyUrl, Field()]
+    geometry: Annotated[Polygon | MultiPolygon, Field()]
+    collection: Annotated[str, Field(default="sentinel-2-l2a")]
+    fmt: Annotated[Literal["png"], Field(default="png")]
+    assets: Annotated[list[str], Field(default_factory=lambda: ["visual"])]
+    rescale: Annotated[list[list[float]], Field(default=[[0, 255]])]
+    expr: Annotated[str | None, Field(default=None)]
+    colormap: Annotated[str | None, Field(default=None)]
+
+
+@dataclass
+class PostImage:
+    body: PostImageBody
+    searcher: Annotated[Searcher, Depends(lambda: Searcher())]
+
+
+@app.post("/image")
+def get_image(ctx: Annotated[PostImage, Depends(PostImage)]):
+    url = ctx.body.href.encoded_string()
+
+    with STACReader(url) as reader:
+        image = reader.feature(
+            ctx.body.geometry.__geo_interface__,
+            assets=ctx.body.assets,
+            expression=ctx.body.expr,
+            vrt_options={
+                "cutline": create_cutline(
+                    src_dst=reader,
+                    geometry=ctx.body.geometry.__geo_interface__,
+                    geometry_crs="epsg:4326",
+                )
+            },
+        )
+
+    if ctx.body.rescale:
+        image = image.post_process(in_range=ctx.body.rescale)
+
+    colormap = cmap.get(ctx.body.colormap) if ctx.body.colormap else None
+    content = image.render(img_format="PNG", colormap=colormap)
+
+    return Response(content=content, media_type="image/png")
+
+
+@dataclass
+class PostSearchBody(BaseModel):
+    geometries: Annotated[list[Polygon | MultiPolygon], Field(default_factory=list)]
+
+
+@dataclass
+class PostSearch:
+    body: PostSearchBody
+    searcher: Annotated[Searcher, Depends(lambda: Searcher())]
+
+
+@app.post("/search")
+def post_search(ctx: Annotated[PostSearch, Depends(PostSearch)]):
+    logger.debug(f"Total geometries: {len(ctx.body.geometries)}")
+
+    geometry = [shape(geom) for geom in ctx.body.geometries]
+    geometry = shapely.union_all(geometry)
+
+    res = ctx.searcher._client.search(
+        max_items=10,
+        intersects=geometry.__geo_interface__,
+        collections=["sentinel-2-l2a"],
+        query={"eo:cloud_cover": {"lt": 10}},
+        sortby=[{"field": "properties.datetime", "direction": "asc"}],
+    )
+
+    response = ctx.searcher.url(
+        geometry=geometry.__geo_interface__,
+        collection="sentinel-2-l2a",
+        limit=10,
+    )
+
+    return [i.absolute_href for i in response]
+
+
+
+@dataclass
 class PostSql:
     body: Annotated[list[Polygon | MultiPolygon], Body()]
     query: Annotated[str, Query()]
@@ -168,6 +246,8 @@ def post_sql(ctx: Annotated[PostSql, Depends(PostSql)]):
 
     for geom, future in zip(ctx.body, futures):
         result = future.result()
-        logger.debug(f"Geometry {geom} matched {len(result)} items: {[i.href for i in result]}")
+        logger.debug(
+            f"Geometry {geom} matched {len(result)} items: {[i.href for i in result]}"
+        )
 
     return {"query": ctx.query}

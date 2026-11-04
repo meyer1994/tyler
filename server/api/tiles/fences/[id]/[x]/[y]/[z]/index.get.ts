@@ -34,6 +34,7 @@ export default defineEventHandler(async (event) => {
 
   const config = useRuntimeConfig(event)
   const url = new URL(config.tiles)
+  url.pathname = '/tiles'
   console.info('[server.tiles] url', url, 'view', view, 'collection', collection)
 
   const [row] = await db

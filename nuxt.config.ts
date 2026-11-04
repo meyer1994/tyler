@@ -6,6 +6,7 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     'nuxt-maplibre',
     'nuxt-echarts',
+    '@nuxt/image',
   ],
 
   devtools: {
