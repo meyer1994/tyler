@@ -10,9 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from geojson_pydantic.geometries import MultiPolygon, Polygon
 from PIL import Image
 from pydantic import BaseModel
+from pystac import Link
 from pystac_client import Client
 from rio_tiler.colormap import cmap
 from rio_tiler.io import STACReader
+from rio_tiler.models import ImageData
+from rio_tiler.mosaic import mosaic_reader
 from rio_tiler.utils import create_cutline
 from shapely.geometry import shape
 
@@ -40,22 +43,25 @@ class Searcher:
     def __post_init__(self):
         self._client = Client.open(self.base)
 
-    def search(self, geometry: dict):
+    def search(self, geometry: dict, limit: int = 1):
         return self._client.search(
-            limit=1,
+            max_items=limit,
             intersects=geometry,
             collections=["sentinel-2-l2a"],
             query={"eo:cloud_cover": {"lt": 10}},
             sortby=[{"field": "properties.datetime", "direction": "asc"}],
         )
 
-    def url(self, geometry: dict):
-        result = self.search(geometry)
-        for item in result.items():
-            for link in item.links:
-                if link.rel == "self":
-                    return link.href
-        raise ValueError("No item found")
+    def url(self, geometry: dict, limit: int = 1):
+        result = self.search(geometry, limit=limit)
+        # Only the `self` link points at the STAC Item itself; the rest are
+        # catalog/collection/asset links that STACReader cannot open.
+        return [
+            link
+            for item in result.items()
+            for link in item.links
+            if link.rel == "self"
+        ]
 
 
 def empty() -> bytes:
@@ -96,29 +102,35 @@ def post_tile(ctx: Annotated[PostTile, Depends(PostTile)]):
         return Response(content=empty(), media_type="image/png")
 
     geometry = geometries.intersection(tile)
-    curl = ctx.searcher.url(geometry.__geo_interface__)
-    logger.debug(f"URL: {curl}")
+    # raise limit for automatic mosaic reader (makes the render very slow)
+    curls = ctx.searcher.url(geometry.__geo_interface__, limit=1)
+    logger.debug(f"Total URLs: {len(curls)}")
+    for curl in curls:
+        logger.debug(f"URL: {curl.href}")
 
-    with STACReader(curl) as reader:
-        image = reader.tile(
-            ctx.body.x,
-            ctx.body.y,
-            ctx.body.z,
-            assets=ctx.body.assets,
-            expression=ctx.body.expr,
-            vrt_options={
-                "cutline": create_cutline(
-                    src_dst=reader,
-                    geometry=geometry.__geo_interface__,
-                    geometry_crs="epsg:4326",
-                )
-            },
-        )
+    def read(curl: Link) -> ImageData:
+        with STACReader(curl.href) as reader:
+            return reader.tile(
+                ctx.body.x,
+                ctx.body.y,
+                ctx.body.z,
+                assets=ctx.body.assets,
+                expression=ctx.body.expr,
+                vrt_options={
+                    "cutline": create_cutline(
+                        src_dst=reader,
+                        geometry=geometry.__geo_interface__,
+                        geometry_crs="epsg:4326",
+                    )
+                },
+            )
 
-        if ctx.body.rescale:
-            image = image.post_process(in_range=ctx.body.rescale)
+    image, _ = mosaic_reader(curls, read)
 
-        colormap = cmap.get(ctx.body.colormap)
-        content = image.render(img_format="PNG", colormap=colormap)
+    if ctx.body.rescale:
+        image = image.post_process(in_range=ctx.body.rescale)
+
+    colormap = cmap.get(ctx.body.colormap)
+    content = image.render(img_format="PNG", colormap=colormap)
 
     return Response(content=content, media_type="image/png")
