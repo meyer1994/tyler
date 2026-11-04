@@ -8,6 +8,7 @@ type Props = {
   events?: GeoJSON.FeatureCollection<GeoJSON.Point, T>
   fences?: GeoJSON.FeatureCollection<GeoJSON.Polygon>
   view?: 'ndvi' | 'rgb'
+  collection?: string
   // Raster tile URL template (must contain {x}/{y}/{z}). Defaults to the
   // app's own /api/tiles proxy.
   tiles?: string
@@ -19,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
   events: () => ({ type: 'FeatureCollection', features: [] }),
   fences: () => ({ type: 'FeatureCollection', features: [] }),
   view: 'ndvi',
+  collection: 'sentinel-2-l2a',
 })
 
 type FeatWithId = Omit<GeoJSON.Feature<GeoJSON.Polygon>, 'id'> & { id: string }
@@ -52,7 +54,8 @@ const url = useRequestURL()
 const tilesUrl = computed(() => {
   const tiles = props.tiles ?? `${url.origin}/api/tiles/{x}/{y}/{z}`
   const separator = tiles.includes('?') ? '&' : '?'
-  return `${tiles}${separator}view=${props.view}`
+  const query = new URLSearchParams({ view: props.view, collection: props.collection })
+  return `${tiles}${separator}${query.toString()}`
 })
 
 // The source is only added on load, so refresh its tiles when the URL changes

@@ -11,6 +11,7 @@ const schemaPath = z.object({
 
 const schemaQuery = z.object({
   view: z.enum(['ndvi', 'rgb']).default('ndvi'),
+  collection: z.string().default('sentinel-2-l2a'),
 })
 
 const templates = {
@@ -27,12 +28,12 @@ const templates = {
 } as const
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig(event)
+  const { view, collection } = await getValidatedQuery(event, schemaQuery.parse)
   const { x, y, z } = await getValidatedRouterParams(event, schemaPath.parse)
-  const { view } = await getValidatedQuery(event, schemaQuery.parse)
 
+  const config = useRuntimeConfig(event)
   const url = new URL(config.tiles)
-  console.info('[server.tiles] url', url, 'view', view)
+  console.info('[server.tiles] url', url, 'view', view, 'collection', collection)
 
   const rows = await db
     .select({ geometry: fences.polygon })
@@ -48,6 +49,7 @@ export default defineEventHandler(async (event) => {
       z,
       fmt: 'png',
       geometries: rows.map(i => i.geometry),
+      collection,
       ...templates[view],
     },
   })

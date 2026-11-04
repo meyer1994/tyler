@@ -43,17 +43,17 @@ class Searcher:
     def __post_init__(self):
         self._client = Client.open(self.base)
 
-    def search(self, geometry: dict, limit: int = 1):
+    def search(self, geometry: dict, collection: str, limit: int = 1):
         return self._client.search(
             max_items=limit,
             intersects=geometry,
-            collections=["sentinel-2-l2a"],
+            collections=[collection],
             query={"eo:cloud_cover": {"lt": 10}},
             sortby=[{"field": "properties.datetime", "direction": "asc"}],
         )
 
-    def url(self, geometry: dict, limit: int = 1):
-        result = self.search(geometry, limit=limit)
+    def url(self, geometry: dict, collection: str, limit: int = 1):
+        result = self.search(geometry, collection, limit=limit)
         # Only the `self` link points at the STAC Item itself; the rest are
         # catalog/collection/asset links that STACReader cannot open.
         return [
@@ -80,6 +80,7 @@ class PostTileBody(BaseModel):
     rescale: list[list[float]] = [(0, 2048), (0, 2048), (0, 2048)]
     expr: str | None = None
     colormap: str | None = None
+    collection: str = "sentinel-2-l2a"
 
 
 @dataclass
@@ -103,7 +104,11 @@ def post_tile(ctx: Annotated[PostTile, Depends(PostTile)]):
 
     geometry = geometries.intersection(tile)
     # raise limit for automatic mosaic reader (makes the render very slow)
-    curls = ctx.searcher.url(geometry.__geo_interface__, limit=1)
+    curls = ctx.searcher.url(
+        geometry.__geo_interface__,
+        collection=ctx.body.collection,
+        limit=1,
+    )
     logger.debug(f"Total URLs: {len(curls)}")
     for curl in curls:
         logger.debug(f"URL: {curl.href}")
