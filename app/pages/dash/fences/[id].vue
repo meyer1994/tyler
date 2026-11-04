@@ -35,13 +35,13 @@ const url = useRequestURL()
       />
     </div>
 
-    <AsyncFetch
-      v-slot="{ data, status }"
-      :fetch-key="`fence-${id}`"
-      :handler="async () => await $trpc.fences.get.query({ id })"
-    >
-      <div class="flex flex-1 min-h-0 flex-col gap-4 lg:flex-row">
-        <div class="flex-1 min-h-0 min-w-0 overflow-hidden rounded-lg border border-default">
+    <div class="flex flex-1 min-h-0 flex-col gap-4 lg:flex-row">
+      <AsyncFetch
+        v-slot="{ data, status }"
+        :fetch-key="`fence-${id}`"
+        :handler="async () => await $trpc.fences.get.query({ id })"
+      >
+        <div class="flex flex-1 min-h-0 flex-col gap-4 lg:flex-row">
           <MapGLView
             v-if="data"
             class="h-full w-full"
@@ -57,13 +57,22 @@ const url = useRequestURL()
           </div>
         </div>
 
-        <div class="shrink-0 overflow-auto rounded-lg border border-default p-4 lg:w-1/3 lg:max-w-md">
-          <h2 class="mb-2 font-semibold">
-            GeoJSON
-          </h2>
-          <pre class="text-xs whitespace-pre-wrap break-all">{{ JSON.stringify(data, null, 2) }}</pre>
-        </div>
-      </div>
-    </AsyncFetch>
+        <UTabs
+          class="w-128"
+          :model-value="String($route.query.tab ?? 'geojson')"
+          :items="[
+            { label: 'Map', value: 'map', slot: 'map' },
+            { label: 'GeoJSON', value: 'geojson', slot: 'geojson' },
+          ]"
+          @update:model-value="navigateTo({ query: { ...$route.query, tab: $event } })"
+        >
+          <template #geojson>
+            <UCard title="GeoJSON">
+              <pre class="text-xs whitespace-pre-wrap break-all">{{ JSON.stringify(data, null, 2) }}</pre>
+            </UCard>
+          </template>
+        </UTabs>
+      </AsyncFetch>
+    </div>
   </div>
 </template>

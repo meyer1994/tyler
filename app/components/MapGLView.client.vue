@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends GeoJSON.GeoJsonProperties">
 import { useMap } from '@indoorequal/vue-maplibre-gl'
-import type { RasterTileSource } from 'maplibre-gl'
+import type { MapMouseEvent, RasterTileSource } from 'maplibre-gl'
 
 type Props = {
   zoom?: number
@@ -57,6 +57,40 @@ watch(tilesUrl, (next) => {
   const source = map.map?.getSource('sentinel-raster-source')
   if (source) (source as RasterTileSource).setTiles([next])
 })
+
+// Track the pointer so a circle can follow it around the map
+const mouse = ref<[number, number] | null>(null)
+
+const onMouseMove = (event: MapMouseEvent) => {
+  mouse.value = [event.lngLat.lng, event.lngLat.lat]
+}
+
+const onMouseOut = () => {
+  mouse.value = null
+}
+
+watch(
+  () => map.isLoaded,
+  (loaded, _, onCleanup) => {
+    if (!loaded || !map.map) return
+    map.map.on('mousemove', onMouseMove)
+    map.map.on('mouseout', onMouseOut)
+    onCleanup(() => map.map?.off('mousemove', onMouseMove))
+    onCleanup(() => map.map?.off('mouseout', onMouseOut))
+  },
+)
+
+onBeforeUnmount(() => {
+  map.map?.off('mousemove', onMouseMove)
+  map.map?.off('mouseout', onMouseOut)
+})
+
+const mouseData = computed<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => ({
+  type: 'FeatureCollection',
+  features: mouse.value
+    ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: mouse.value }, properties: {} }]
+    : [],
+}))
 </script>
 
 <template>
@@ -104,6 +138,22 @@ watch(tilesUrl, (next) => {
           :paint="{
             'line-color': '#3bb2d0',
             'line-width': 2,
+          }"
+        />
+      </MglGeoJsonSource>
+
+      <MglGeoJsonSource
+        source-id="mouse-geojson-source"
+        :data="mouseData"
+      >
+        <MglCircleLayer
+          layer-id="mouse-circle-layer"
+          source="mouse-geojson-source"
+          :paint="{
+            'circle-radius': 20,
+            'circle-color': '#00000000',
+            'circle-stroke-color': '#3bb2d0',
+            'circle-stroke-width': 2,
           }"
         />
       </MglGeoJsonSource>
