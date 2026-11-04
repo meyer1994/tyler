@@ -130,7 +130,7 @@ def post_tile(ctx: Annotated[PostTile, Depends(PostTile)]):
     if ctx.body.rescale:
         image = image.post_process(in_range=ctx.body.rescale)
 
-    colormap = cmap.get(ctx.body.colormap)
+    colormap = cmap.get(ctx.body.colormap) if ctx.body.colormap else None
     content = image.render(img_format="PNG", colormap=colormap)
 
     return Response(content=content, media_type="image/png")

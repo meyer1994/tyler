@@ -9,12 +9,30 @@ const schemaPath = z.object({
   z: z.coerce.number(),
 })
 
+const schemaQuery = z.object({
+  view: z.enum(['ndvi', 'rgb']).default('ndvi'),
+})
+
+const templates = {
+  rgb: {
+    assets: ['visual'],
+    rescale: [[0, 255]],
+  },
+  ndvi: {
+    assets: ['nir', 'red'],
+    expr: '(b1-b2)/(b1+b2)',
+    rescale: [[-1, 1]],
+    colormap: 'rdylgn',
+  },
+} as const
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
   const { x, y, z } = await getValidatedRouterParams(event, schemaPath.parse)
+  const { view } = await getValidatedQuery(event, schemaQuery.parse)
 
   const url = new URL(config.tiles)
-  console.info('[server.tiles] url', url)
+  console.info('[server.tiles] url', url, 'view', view)
 
   const rows = await db
     .select({ geometry: fences.polygon })
@@ -25,15 +43,12 @@ export default defineEventHandler(async (event) => {
   return await $fetch(url.toString(), {
     method: 'POST',
     body: {
-      x: x,
-      y: y,
-      z: z,
+      x,
+      y,
+      z,
       fmt: 'png',
       geometries: rows.map(i => i.geometry),
-      assets: ['nir', 'red'],
-      expr: '(b1-b2)/(b1+b2)',
-      rescale: [[-1, 1]],
-      colormap: 'rdylgn',
+      ...templates[view],
     },
   })
 })

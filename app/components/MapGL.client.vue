@@ -1,11 +1,16 @@
 <script setup lang="ts" generic="T extends GeoJSON.GeoJsonProperties">
 import { useMap } from '@indoorequal/vue-maplibre-gl'
+import type { RasterTileSource } from 'maplibre-gl'
 
 type Props = {
   zoom?: number
   center?: [number, number]
   events?: GeoJSON.FeatureCollection<GeoJSON.Point, T>
   fences?: GeoJSON.FeatureCollection<GeoJSON.Polygon>
+  view?: 'ndvi' | 'rgb'
+  // Raster tile URL template (must contain {x}/{y}/{z}). Defaults to the
+  // app's own /api/tiles proxy.
+  tiles?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -13,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
   center: () => [-51.2300, -30.0346],
   events: () => ({ type: 'FeatureCollection', features: [] }),
   fences: () => ({ type: 'FeatureCollection', features: [] }),
+  view: 'ndvi',
 })
 
 type FeatWithId = Omit<GeoJSON.Feature<GeoJSON.Polygon>, 'id'> & { id: string }
@@ -43,7 +49,17 @@ watch(
 )
 
 const url = useRequestURL()
-const tilesUrl = `${url.origin}/api/tiles/{x}/{y}/{z}`
+const tilesUrl = computed(() => {
+  const tiles = props.tiles ?? `${url.origin}/api/tiles/{x}/{y}/{z}`
+  const separator = tiles.includes('?') ? '&' : '?'
+  return `${tiles}${separator}view=${props.view}`
+})
+
+// The source is only added on load, so refresh its tiles when the URL changes
+watch(tilesUrl, (next) => {
+  const source = map.map?.getSource('sentinel-raster-source')
+  if (source) (source as RasterTileSource).setTiles([next])
+})
 </script>
 
 <template>
