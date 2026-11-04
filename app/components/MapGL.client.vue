@@ -34,20 +34,23 @@ const emits = defineEmits<{
 
 const hovered = ref<GeoJSON.Feature<GeoJSON.Point, Event> | null>(null)
 
-// Fit the map to the events when the map is loaded
+// Fit the map to the events, falling back to the fences, when the map is
+// loaded or the data changes
 const map = useMap()
-watch(
-  () => map.isLoaded,
-  async (loaded) => {
-    if (!loaded) return
-    if (!map.map) return
-    if (!props.events) return
-    if (props.events.features.length === 0) return
+const fitToData = async () => {
+  if (!map.isLoaded || !map.map) return
 
-    const { bbox } = await import('@turf/turf')
-    const [minX, minY, maxX, maxY] = bbox(props.events)
-    map.map.fitBounds([minX - 0.001, minY - 0.001, maxX + 0.001, maxY + 0.001], { animate: false })
-  },
+  const collection = props.events.features.length > 0 ? props.events : props.fences
+  if (collection.features.length === 0) return
+
+  const { bbox } = await import('@turf/turf')
+  const [minX, minY, maxX, maxY] = bbox(collection)
+  map.map.fitBounds([minX - 0.001, minY - 0.001, maxX + 0.001, maxY + 0.001], { animate: false })
+}
+
+watch(
+  [() => map.isLoaded, () => props.events, () => props.fences],
+  fitToData,
 )
 
 const url = useRequestURL()

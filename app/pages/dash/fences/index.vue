@@ -99,9 +99,12 @@ const deleteFence = async (id: string, refresh: () => Promise<unknown>) => {
           class="flex-1"
         >
           <template #id-cell="{ row }">
-            <span class="font-bold font-mono text-sm">
+            <NuxtLink
+              :to="`/dash/fences/${row.original.properties.id}`"
+              class="font-bold font-mono text-sm hover:underline"
+            >
               #{{ row.original.properties.id.substring(0, 8) }}
-            </span>
+            </NuxtLink>
           </template>
 
           <template #area-cell="{ row }">

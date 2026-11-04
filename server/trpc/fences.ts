@@ -1,5 +1,5 @@
 import { desc, eq } from 'drizzle-orm'
-import type { FeatureCollection, Polygon } from 'geojson'
+import type { Feature, FeatureCollection, Polygon } from 'geojson'
 import z from 'zod'
 import { fences } from '~~/server/db/schema'
 import { createTRPCRouter, protectedProcedure } from '../lib/trpc'
@@ -36,6 +36,45 @@ export const fencesRouter = createTRPCRouter({
       }
 
       return features
+    }),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [fence] = await ctx.db
+        .select({
+          id: fences.id,
+          polygon: fences.polygon,
+          area: fences.area,
+          createdAt: fences.createdAt,
+          updatedAt: fences.updatedAt,
+        })
+        .from(fences)
+        .where(eq(fences.id, input.id))
+        .limit(1)
+
+      if (!fence) {
+        throw createError({ status: 404, message: 'Fence not found' })
+      }
+
+      const feature: Feature<Polygon, {
+        id: string
+        area: number
+        createdAt: Date
+        updatedAt: Date
+      }> = {
+        type: 'Feature',
+        id: fence.id,
+        geometry: fence.polygon,
+        properties: {
+          id: fence.id,
+          area: fence.area,
+          createdAt: fence.createdAt,
+          updatedAt: fence.updatedAt,
+        },
+      }
+
+      return feature
     }),
 
   create: protectedProcedure
